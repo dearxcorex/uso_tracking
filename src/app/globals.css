@@ -1,0 +1,502 @@
+@import "tailwindcss";
+
+:root {
+  /* Light Theme — Fresh Garden */
+  --background: #F0FDF4;
+  --foreground: #134E4A;
+  --card: #FFFFFF;
+  --card-foreground: #134E4A;
+  --primary: #14B8A6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECFDF5;
+  --secondary-foreground: #134E4A;
+  --muted: #ECFDF5;
+  --muted-foreground: #64748B;
+  --accent: #8B5CF6;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #D1FAE5;
+  --input: #ECFDF5;
+  --ring: #14B8A6;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #D1FAE5;
+
+  /* Status colors */
+  --status-success: #84CC16;
+  --status-warning: #F59E0B;
+  --status-error: #EF4444;
+  --status-info: #14B8A6;
+  --status-purple: #8B5CF6;
+  --status-teal: #14B8A6;
+
+  /* Toggle-specific colors */
+  --toggle-bg-off: #D1FAE5;
+  --toggle-bg-on: #84CC16;
+  --toggle-border: #A7F3D0;
+  --toggle-thumb: #FFFFFF;
+  --toggle-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* Z-index scale system */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+
+  /* Fonts */
+  --font-heading: 'Fredoka', sans-serif;
+  --font-body: 'Nunito', sans-serif;
+}
+
+.dark {
+  /* Dark mode — Deep Garden */
+  --background: #0F1A1A;
+  --foreground: #E2E8F0;
+  --card: #1A2E2E;
+  --card-foreground: #E2E8F0;
+  --primary: #2DD4BF;
+  --primary-foreground: #0F1A1A;
+  --secondary: #1A2E2E;
+  --secondary-foreground: #E2E8F0;
+  --muted: #1A2E2E;
+  --muted-foreground: #94A3B8;
+  --accent: #A78BFA;
+  --accent-foreground: #0F1A1A;
+  --destructive: #EF4444;
+  --destructive-foreground: #E2E8F0;
+  --border: #2A4040;
+  --input: #1A2E2E;
+  --ring: #2DD4BF;
+  --sidebar-bg: #0F1A1A;
+  --sidebar-border: #2A4040;
+
+  /* Toggle - Dark version */
+  --toggle-bg-off: #2A4040;
+  --toggle-bg-on: #84CC16;
+  --toggle-border: #3A5050;
+  --toggle-thumb: #E2E8F0;
+  --toggle-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-heading), sans-serif;
+  --font-mono: var(--font-mono, ui-monospace), SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* Cursor on interactive elements */
+button,
+[role="button"],
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading Font */
+h1, h2, h3, .font-heading {
+  font-family: var(--font-heading), 'Fredoka', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.font-sans {
+  font-family: var(--font-body), 'Nunito', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Clean Card — green-tinted shadows */
+.clay-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(20, 184, 166, 0.06);
+}
+
+.dark .clay-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Clean Shadow */
+.clay-shadow {
+  box-shadow: 0 1px 2px rgba(20, 184, 166, 0.05);
+}
+
+.dark .clay-shadow {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Gradient Text — teal→violet */
+.gradient-text {
+  background: linear-gradient(135deg, #14B8A6, #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 3px;
+  opacity: 0.4;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Stable scrollbar */
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Navigation Sidebar — Clean */
+.nav-sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  overflow: hidden;
+}
+
+.nav-sidebar button {
+  cursor: pointer;
+}
+
+/* Mobile Bottom Navigation — Clean */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  z-index: var(--z-fixed);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -1px 3px rgba(20, 184, 166, 0.06);
+}
+
+.dark .mobile-bottom-nav {
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.mobile-bottom-nav button {
+  cursor: pointer;
+}
+
+/* Status Badge Utility Classes */
+.badge-success {
+  background: color-mix(in srgb, var(--status-success) 12%, transparent);
+  color: var(--status-success);
+  border: 1px solid color-mix(in srgb, var(--status-success) 20%, transparent);
+  border-radius: 6px;
+}
+
+.badge-warning {
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  color: var(--status-warning);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 20%, transparent);
+  border-radius: 6px;
+}
+
+.badge-error {
+  background: color-mix(in srgb, var(--status-error) 12%, transparent);
+  color: var(--status-error);
+  border: 1px solid color-mix(in srgb, var(--status-error) 20%, transparent);
+  border-radius: 6px;
+}
+
+.badge-info {
+  background: color-mix(in srgb, var(--status-info) 12%, transparent);
+  color: var(--status-info);
+  border: 1px solid color-mix(in srgb, var(--status-info) 20%, transparent);
+  border-radius: 6px;
+}
+
+.badge-purple {
+  background: color-mix(in srgb, var(--status-purple) 12%, transparent);
+  color: var(--status-purple);
+  border: 1px solid color-mix(in srgb, var(--status-purple) 20%, transparent);
+  border-radius: 6px;
+}
+
+.badge-teal {
+  background: color-mix(in srgb, var(--status-teal) 12%, transparent);
+  color: var(--status-teal);
+  border: 1px solid color-mix(in srgb, var(--status-teal) 20%, transparent);
+  border-radius: 6px;
+}
+
+/* Card hover effect — teal-tinted */
+.card-hover {
+  transition: all 0.15s ease;
+}
+
+.card-hover:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.12);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 2px 8px rgba(45, 212, 191, 0.12);
+}
+
+/* Toggle switch */
+input[type="checkbox"][role="switch"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--toggle-bg-off);
+  border: 1px solid var(--toggle-border);
+  border-radius: 1rem;
+  width: 2.75rem;
+  height: 1.375rem;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--toggle-shadow);
+}
+
+input[type="checkbox"][role="switch"]:checked {
+  background: var(--toggle-bg-on);
+  border-color: var(--toggle-bg-on);
+}
+
+input[type="checkbox"][role="switch"]::before {
+  content: '';
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 0.875rem;
+  height: 0.875rem;
+  background: var(--toggle-thumb);
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+input[type="checkbox"][role="switch"]:checked::before {
+  transform: translateX(1.35rem);
+}
+
+/* Mobile responsive */
+@media (max-width: 1023px) {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  button,
+  [role="button"],
+  a.btn,
+  select {
+    min-height: 44px;
+  }
+}
+
+/* Leaflet popup overrides — garden theme */
+.leaflet-popup-content-wrapper {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(20, 184, 166, 0.08) !important;
+  padding: 0 !important;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px !important;
+  font-family: var(--font-body), 'Nunito', sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 18px !important;
+  top: 8px !important;
+  right: 8px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--foreground) !important;
+}
+
+.leaflet-container {
+  font-family: var(--font-body), 'Nunito', sans-serif !important;
+  background: var(--background) !important;
+}
+
+/* Custom map pin styles */
+.map-pin-custom {
+  background: none !important;
+  border: none !important;
+  transition: transform 0.15s ease;
+}
+
+.map-pin-custom:hover {
+  transform: scale(1.1);
+  z-index: 1000 !important;
+}
+
+/* Marker cluster styling */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background-color: var(--primary) !important;
+  color: white !important;
+  font-family: var(--font-body), 'Nunito', sans-serif !important;
+  font-weight: 600 !important;
+}
+
+/* Current location blue dot */
+.current-location-dot {
+  background: transparent !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.current-location-dot::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background: #4285F4;
+  border: 2.5px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(66, 133, 244, 0.5);
+  position: absolute;
+  z-index: 2;
+}
+
+.current-location-dot::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  background: rgba(66, 133, 244, 0.15);
+  border-radius: 50%;
+  position: absolute;
+  animation: location-pulse 2s ease-out infinite;
+}
+
+@keyframes location-pulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Location accuracy circle */
+.location-accuracy-circle {
+  fill: rgba(66, 133, 244, 0.1);
+  stroke: rgba(66, 133, 244, 0.3);
+  stroke-width: 1;
+}
+
+/* Hide scrollbar on filter bar */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Transition utilities */
+.transition-theme {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Tab fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}

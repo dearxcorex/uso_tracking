@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  status      String   @default("active")
+  progress    Int      @default(0)
+  deadline    DateTime?
+  tags        String[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  tasks       task[]
+}
+
+model task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("todo")
+  priority    String   @default("medium")
+  assignee    String?
+  due_date    DateTime?
+  project_id  Int
+  project     project  @relation(fields: [project_id], references: [id])
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model uso_service_point {
+  id               Int      @id @default(autoincrement())
+  service_name     String
+  village          String?
+  subdistrict      String?
+  district         String?
+  province         String
+  install_location String?
+  contract_number  String?
+  provider         String
+  latitude         Float?
+  longitude        Float?
+  zone             String?
+  inspected        Boolean  @default(false)
+  inspected_at     DateTime?
+
+  @@index([district])
+  @@index([zone])
+  @@index([service_name])
+  @@index([provider])
+  @@index([inspected])
+}
