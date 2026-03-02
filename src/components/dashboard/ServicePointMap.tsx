@@ -319,7 +319,7 @@ function ServiceNameBadge({ name }: { name: string }) {
 function ZoneBadge({ zone }: { zone: string }) {
   const isPlus = zone.includes('C+');
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
       isPlus
         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
         : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
@@ -329,11 +329,18 @@ function ZoneBadge({ zone }: { zone: string }) {
   );
 }
 
-/* Provider color */
+/* Provider short name + color */
+
+function getProviderShort(name: string): string {
+  if (name.includes('CAT')) return 'NT (CAT)';
+  if (name.includes('TOT')) return 'NT (TOT)';
+  if (name.includes('ทรู') || name.includes('True')) return 'True Move H';
+  return name.length > 20 ? name.slice(0, 20) + '…' : name;
+}
 
 function providerColor(provider: string) {
-  if (provider === 'CAT') return 'text-orange-600 dark:text-orange-400';
-  if (provider === 'TOT') return 'text-violet-600 dark:text-violet-400';
+  if (provider.includes('CAT')) return 'text-orange-600 dark:text-orange-400';
+  if (provider.includes('TOT')) return 'text-violet-600 dark:text-violet-400';
   return 'text-rose-600 dark:text-rose-400';
 }
 
@@ -361,16 +368,20 @@ function PopupContent({
     }
   };
 
+  // Condensed location: village / subdistrict / district
+  const locationParts = [point.village, point.subdistrict, point.district].filter(Boolean);
+  const locationLine = locationParts.join(' / ');
+
   return (
-    <div className="min-w-[240px] max-w-[300px] space-y-2.5">
-      {/* Header */}
+    <div className="min-w-[250px] max-w-[320px] max-h-[65vh] overflow-y-auto space-y-2.5">
+      {/* Header: badges */}
       <div className="flex items-center gap-2 flex-wrap">
         <ServiceNameBadge name={point.serviceName} />
         {point.zone && <ZoneBadge zone={point.zone} />}
       </div>
 
-      {/* Status */}
-      <div className={`flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
+      {/* Status banner */}
+      <div className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-bold transition-colors ${
         inspected
           ? 'bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-500/30'
           : 'bg-orange-500/20 text-orange-700 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/30'
@@ -380,28 +391,22 @@ function PopupContent({
       </div>
 
       {/* Detail fields */}
-      <div className="text-[12px] space-y-1 text-[var(--card-foreground)]">
-        {point.village && (
+      <div className="text-[13px] space-y-1.5 text-[var(--card-foreground)]">
+        {point.installLocation && (
           <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">หมู่บ้าน:</span>
-            <span className="font-medium">{point.village}</span>
+            <span className="text-[var(--muted-foreground)] shrink-0">📍 สถานที่:</span>
+            <span className="font-medium">{point.installLocation}</span>
           </div>
         )}
-        {point.subdistrict && (
+        {locationLine && (
           <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">ตำบล:</span>
-            <span className="font-medium">{point.subdistrict}</span>
-          </div>
-        )}
-        {point.district && (
-          <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">อำเภอ:</span>
-            <span className="font-medium">{point.district}</span>
+            <span className="text-[var(--muted-foreground)] shrink-0">🏘</span>
+            <span className="font-medium">{locationLine}</span>
           </div>
         )}
         <div className="flex gap-2">
-          <span className="text-[var(--muted-foreground)] shrink-0">ผู้ให้บริการ:</span>
-          <span className={`font-semibold ${providerColor(point.provider)}`}>{point.provider}</span>
+          <span className="text-[var(--muted-foreground)] shrink-0">🏢 ผู้ให้บริการ:</span>
+          <span className={`font-semibold ${providerColor(point.provider)}`}>{getProviderShort(point.provider)}</span>
         </div>
       </div>
 
@@ -410,32 +415,42 @@ function PopupContent({
         <button
           onClick={handleClick}
           disabled={toggling}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium text-white transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 rounded-xl text-sm font-semibold text-white transition-colors ${
             inspected
-              ? 'bg-orange-500 hover:bg-orange-600'
-              : 'bg-emerald-500 hover:bg-emerald-600'
+              ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700'
+              : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700'
           } ${toggling ? 'opacity-50' : ''}`}
-          style={{ minHeight: '40px' }}
+          style={{ minHeight: '48px' }}
         >
           {toggling ? (
-            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           ) : inspected ? (
-            'ยกเลิกตรวจ'
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              ยกเลิกตรวจ
+            </>
           ) : (
-            'ตรวจแล้ว'
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              ตรวจแล้ว
+            </>
           )}
         </button>
         <a
           href={`https://www.google.com/maps/dir/?api=1&destination=${point.latitude},${point.longitude}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
-          style={{ minHeight: '40px' }}
+          className="flex items-center justify-center gap-1.5 px-4 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground transition-colors"
+          style={{ minHeight: '48px' }}
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
@@ -479,6 +494,50 @@ const ClusterLayer = React.memo(function ClusterLayer({
     </MarkerClusterGroup>
   );
 });
+
+/* Collapsible Legend */
+
+function MapLegend() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'none', marginBottom: '8px', marginLeft: '8px' }}>
+      <div className="leaflet-control" style={{ pointerEvents: 'auto' }}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-sm text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <circle cx="12" cy="12" r="3" />
+            <path strokeLinecap="round" d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+          </svg>
+          ประเภทบริการ
+          <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+        {open && (
+          <div className="mt-1 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-2 shadow-sm">
+            <div className="space-y-1">
+              {SERVICE_LEGEND.map((item) => (
+                <div key={item.name} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-[11px] text-foreground whitespace-nowrap">{item.name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-border mt-1.5 pt-1.5 flex items-center gap-1.5">
+              <svg className="w-2.5 h-2.5 text-emerald-600 shrink-0" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 5 L4.5 7.5 L8 3" />
+              </svg>
+              <span className="text-[10px] text-muted-foreground">= ตรวจแล้ว</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* Main Map Component */
 
@@ -681,28 +740,8 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
           <FitBounds points={filteredPoints} />
           <ClusterLayer points={filteredPoints} onToggle={handleToggle} markersRef={markersRef} />
           <LocationControl />
-          {/* Legend */}
-          <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'none', marginBottom: '8px', marginLeft: '8px' }}>
-            <div className="leaflet-control" style={{ pointerEvents: 'auto' }}>
-              <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-2 shadow-sm">
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">ประเภทบริการ</div>
-                <div className="space-y-1">
-                  {SERVICE_LEGEND.map((item) => (
-                    <div key={item.name} className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-[11px] text-foreground whitespace-nowrap">{item.name}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-border mt-1.5 pt-1.5 flex items-center gap-1.5">
-                  <svg className="w-2.5 h-2.5 text-emerald-600 shrink-0" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 5 L4.5 7.5 L8 3" />
-                  </svg>
-                  <span className="text-[10px] text-muted-foreground">= ตรวจแล้ว</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Legend — collapsible, hidden by default */}
+          <MapLegend />
         </MapContainer>
       </div>
     </div>
