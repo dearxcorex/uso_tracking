@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const API_BASE = process.env.ASSET_API_BASE || 'http://34.126.174.195:8000/api';
-
-async function getApiToken(): Promise<string> {
-  const user = process.env.ASSET_API_USER;
-  const pass = process.env.ASSET_API_PASS;
-  if (!user || !pass) {
-    throw new Error('ASSET_API_USER and ASSET_API_PASS must be set');
-  }
-  const form = new URLSearchParams({ username: user, password: pass });
-  const r = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form.toString(),
-  });
-  if (!r.ok) throw new Error('API login failed');
-  const data = await r.json();
-  return data.access_token;
-}
+import { getApiToken, getApiBase } from '@/lib/asset-api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +16,7 @@ export async function GET(request: NextRequest) {
       pcode: '36',
     });
 
-    const r = await fetch(`${API_BASE}/items?${params}`, {
+    const r = await fetch(`${getApiBase()}/items?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

@@ -1,21 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const API_BASE = process.env.ASSET_API_BASE || 'http://34.126.174.195:8000/api';
-
-async function getApiToken(): Promise<string> {
-  const user = process.env.ASSET_API_USER;
-  const pass = process.env.ASSET_API_PASS;
-  if (!user || !pass) throw new Error('ASSET_API_USER and ASSET_API_PASS must be set');
-  const form = new URLSearchParams({ username: user, password: pass });
-  const r = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form.toString(),
-  });
-  if (!r.ok) throw new Error('API login failed');
-  return (await r.json()).access_token;
-}
+import { getApiToken, getApiBase } from '@/lib/asset-api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,7 +59,7 @@ export async function POST(request: NextRequest) {
         body.append('equip_image', new Blob([equipBytes], { type: 'image/jpeg' }), 'equip.jpg');
         body.append('overall_image', new Blob([overallBytes], { type: 'image/jpeg' }), 'overall.jpg');
 
-        const r = await fetch(`${API_BASE}/items/${itemId}/inspect`, {
+        const r = await fetch(`${getApiBase()}/items/${itemId}/inspect`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body,
@@ -85,9 +70,9 @@ export async function POST(request: NextRequest) {
         results.push({ itemId, success: false, error: String(err) });
       }
 
-      // Throttle between requests
+      // Brief throttle to avoid overwhelming external API
       if (itemIds.indexOf(itemId) < itemIds.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
 
