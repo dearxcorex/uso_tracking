@@ -36,6 +36,7 @@ model task {
 
 model uso_service_point {
   id               Int      @id @default(autoincrement())
+  asset_id         String?
   service_name     String
   village          String?
   subdistrict      String?

@@ -65,6 +65,7 @@ async function getMapPoints(): Promise<MapServicePoint[]> {
     },
     select: {
       id: true,
+      asset_id: true,
       service_name: true,
       village: true,
       subdistrict: true,
@@ -83,6 +84,7 @@ async function getMapPoints(): Promise<MapServicePoint[]> {
 
   return data.map((p) => ({
     id: p.id,
+    assetId: p.asset_id,
     serviceName: p.service_name,
     village: p.village,
     subdistrict: p.subdistrict,

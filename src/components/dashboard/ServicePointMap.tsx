@@ -392,6 +392,12 @@ function PopupContent({
 
       {/* Detail fields */}
       <div className="text-[13px] space-y-1.5 text-[var(--card-foreground)]">
+        {point.assetId && (
+          <div className="flex gap-2">
+            <span className="text-[var(--muted-foreground)] shrink-0">🏷 Asset ID:</span>
+            <span className="font-mono font-medium text-xs bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">{point.assetId}</span>
+          </div>
+        )}
         {point.installLocation && (
           <div className="flex gap-2">
             <span className="text-[var(--muted-foreground)] shrink-0">📍 สถานที่:</span>
