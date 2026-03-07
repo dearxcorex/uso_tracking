@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { computeInspectToggle, parseServicePointId } from '@/lib/inspect';
 
 export async function PATCH(
   _request: NextRequest,
@@ -7,8 +8,8 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const pointId = parseInt(id);
-    if (isNaN(pointId)) {
+    const pointId = parseServicePointId(id);
+    if (pointId === null) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
@@ -21,14 +22,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Service point not found' }, { status: 404 });
     }
 
-    const newInspected = !current.inspected;
+    const toggleData = computeInspectToggle(current.inspected);
     const updated = await prisma.uso_service_point.update({
       where: { id: pointId },
-      data: {
-        inspected: newInspected,
-        inspected_at: newInspected ? new Date() : null,
-        upload_status: newInspected ? 'pending' : null,
-      },
+      data: toggleData,
       select: {
         id: true,
         inspected: true,

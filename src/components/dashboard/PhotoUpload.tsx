@@ -317,7 +317,7 @@ function UploadForm({
               </>
             )}
           </div>
-          <input ref={equipRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleEquipFile(e.target.files?.[0] || null)} />
+          <input ref={equipRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleEquipFile(e.target.files?.[0] || null); e.target.value = ''; }} />
         </div>
 
         <div>
@@ -338,7 +338,7 @@ function UploadForm({
               </>
             )}
           </div>
-          <input ref={overallRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleOverallFile(e.target.files?.[0] || null)} />
+          <input ref={overallRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleOverallFile(e.target.files?.[0] || null); e.target.value = ''; }} />
         </div>
       </div>
 

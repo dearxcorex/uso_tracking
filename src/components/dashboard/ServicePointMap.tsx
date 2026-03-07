@@ -6,6 +6,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapServicePoint } from '@/types';
+import { getProviderShort, providerColor } from '@/lib/map-utils';
 
 type FilterType = 'all' | 'inspected' | 'not-inspected';
 
@@ -327,21 +328,6 @@ function ZoneBadge({ zone }: { zone: string }) {
       {isPlus ? 'Zone C+' : 'Zone C'}
     </span>
   );
-}
-
-/* Provider short name + color */
-
-function getProviderShort(name: string): string {
-  if (name.includes('CAT')) return 'NT (CAT)';
-  if (name.includes('TOT')) return 'NT (TOT)';
-  if (name.includes('ทรู') || name.includes('True')) return 'True Move H';
-  return name.length > 20 ? name.slice(0, 20) + '…' : name;
-}
-
-function providerColor(provider: string) {
-  if (provider.includes('CAT')) return 'text-orange-600 dark:text-orange-400';
-  if (provider.includes('TOT')) return 'text-violet-600 dark:text-violet-400';
-  return 'text-rose-600 dark:text-rose-400';
 }
 
 /* Popup Content — manages its own inspection state */
