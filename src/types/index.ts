@@ -1,4 +1,32 @@
-export type ActiveTab = 'dashboard' | 'map';
+export type ActiveTab = 'dashboard' | 'map' | 'upload';
+
+export type UploadStatus = 'pending' | 'uploaded' | 'partial';
+
+export interface AssetSubItem {
+  id: number;
+  assetId: string;
+  subAssetId: string;
+  oAssetId: string;
+  assetDesc: string;
+  refDoc: string;
+  locationText: string;
+  statusKey: string | null;
+  derivedStatus: string | null;
+}
+
+export interface UploadServicePoint {
+  ids: number[];
+  assetId: string;
+  oAssetId: string | null;
+  serviceName: string;
+  village: string | null;
+  district: string | null;
+  province: string;
+  uploadStatus: string | null;
+  uploadedAt: string | null;
+  inspectedAt: string | null;
+  pointCount: number;
+}
 
 // USO Service Point types
 export type USOZone = 'USO Zone C' | 'USO Zone C+';

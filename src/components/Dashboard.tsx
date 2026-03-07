@@ -11,6 +11,7 @@ const StatsCards = dynamic(() => import('./dashboard/StatsCards'));
 const DistrictBreakdown = dynamic(() => import('./dashboard/DistrictBreakdown'));
 const ProviderChart = dynamic(() => import('./dashboard/ProviderChart'));
 const ServicePointMap = dynamic(() => import('./dashboard/ServicePointMap'), { ssr: false });
+const PhotoUpload = dynamic(() => import('./dashboard/PhotoUpload'));
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-muted/50 rounded-xl ${className}`} />;
@@ -31,6 +32,7 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
   const subtitleMap: Record<ActiveTab, string> = {
     dashboard: 'ภาพรวมจุดบริการ USO จังหวัดชัยภูมิ',
     map: 'แผนที่จุดบริการ USO',
+    upload: 'อัปโหลดรูปภาพการตรวจ',
   };
 
   return (
@@ -61,6 +63,12 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
           {activeTab === 'map' && (
             <Suspense fallback={<MapSkeleton />}>
               <ServicePointMap initialPoints={initialMapPoints} />
+            </Suspense>
+          )}
+
+          {activeTab === 'upload' && (
+            <Suspense fallback={<Skeleton className="h-96" />}>
+              <PhotoUpload />
             </Suspense>
           )}
         </div>

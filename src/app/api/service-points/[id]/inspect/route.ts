@@ -27,11 +27,13 @@ export async function PATCH(
       data: {
         inspected: newInspected,
         inspected_at: newInspected ? new Date() : null,
+        upload_status: newInspected ? 'pending' : null,
       },
       select: {
         id: true,
         inspected: true,
         inspected_at: true,
+        upload_status: true,
       },
     });
 
