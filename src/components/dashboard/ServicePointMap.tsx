@@ -398,6 +398,12 @@ function PopupContent({
             <span className="font-mono font-medium text-xs bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">{point.assetId}</span>
           </div>
         )}
+        {point.oAssetId && (
+          <div className="flex gap-2">
+            <span className="text-[var(--muted-foreground)] shrink-0">🔖 O Asset ID:</span>
+            <span className="font-mono font-medium text-xs bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">{point.oAssetId}</span>
+          </div>
+        )}
         {point.installLocation && (
           <div className="flex gap-2">
             <span className="text-[var(--muted-foreground)] shrink-0">📍 สถานที่:</span>
@@ -555,12 +561,9 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
   // Data ref — mutable, does NOT trigger cluster re-render on toggle
   const allPointsRef = useRef<MapServicePoint[]>(initialPoints);
   const markersRef = useRef<Record<number, L.Marker>>({});
-  const filterRef = useRef<MapFilters>(defaultFilters);
 
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  // Version counter — only incremented when cluster needs rebuilding (filter with toggle)
-  const [clusterVersion, setClusterVersion] = useState(0);
 
   // Separate counts state — re-renders filter pills only, not markers
   const [counts, setCounts] = useState(() => ({
@@ -568,8 +571,6 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
     inspected: initialPoints.filter((p) => p.inspected).length,
     notInspected: initialPoints.filter((p) => !p.inspected).length,
   }));
-
-  filterRef.current = filters;
 
   // Derive unique filter options from all points (computed once)
   const filterOptions = useMemo(() => {
@@ -592,7 +593,6 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
 
   const hasAdvancedFilters = filters.zone !== '' || filters.serviceName !== '' || filters.district !== '' || filters.provider !== '';
 
-  // Only recalculates on filter change or explicit clusterVersion bump
   const filteredPoints = useMemo(() => {
     let pts = allPointsRef.current;
     if (filters.inspection === 'inspected') pts = pts.filter((p) => p.inspected);
@@ -602,7 +602,7 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
     if (filters.district) pts = pts.filter((p) => p.district === filters.district);
     if (filters.provider) pts = pts.filter((p) => p.provider === filters.provider);
     return pts;
-  }, [filters, clusterVersion]);
+  }, [filters]);
 
   const handleToggle = useCallback(async (id: number): Promise<boolean> => {
     const res = await fetch(`/api/service-points/${id}/inspect`, { method: 'PATCH' });
@@ -621,17 +621,11 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
       notInspected: prev.notInspected + (updated.inspected ? -1 : 1),
     }));
 
-    // Update marker icon imperatively — no re-render needed
+    // Update marker icon imperatively — no re-render, popup stays open
     const marker = markersRef.current[id];
     if (marker) {
       const point = allPointsRef.current.find((p) => p.id === id);
       if (point) marker.setIcon(getServicePin(point.serviceName, updated.inspected));
-    }
-
-    // If user is on a filtered view, rebuild cluster (point may appear/disappear)
-    const f = filterRef.current;
-    if (f.inspection !== 'all' || f.zone || f.serviceName || f.district || f.provider) {
-      setClusterVersion((v) => v + 1);
     }
 
     return updated.inspected;
