@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE = 'http://34.126.174.195:8000/api';
+const API_BASE = process.env.ASSET_API_BASE || 'http://34.126.174.195:8000/api';
 
 async function getApiToken(): Promise<string> {
   const user = process.env.ASSET_API_USER;

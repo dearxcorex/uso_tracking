@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const points = await prisma.uso_service_point.findMany({
       where: {
-        upload_status: { in: ['pending', 'partial'] },
+        upload_status: { in: ['pending', 'partial', 'uploaded'] },
         asset_id: { not: null },
       },
       select: {
@@ -63,8 +63,7 @@ export async function GET() {
 
     return NextResponse.json(Array.from(grouped.values()));
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error('Failed to fetch pending uploads:', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('Failed to fetch pending uploads:', error);
+    return NextResponse.json({ error: 'Failed to fetch pending uploads' }, { status: 500 });
   }
 }

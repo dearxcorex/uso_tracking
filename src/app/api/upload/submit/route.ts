@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-const API_BASE = 'http://34.126.174.195:8000/api';
+const API_BASE = process.env.ASSET_API_BASE || 'http://34.126.174.195:8000/api';
 
 async function getApiToken(): Promise<string> {
   const user = process.env.ASSET_API_USER;
@@ -31,11 +31,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: servicePointIds, itemIds, equipImage, overallImage' }, { status: 400 });
     }
 
-    const servicePointIds: number[] = JSON.parse(servicePointIdsStr);
+    // Validate JSON inputs
+    let servicePointIds: number[];
+    let itemIds: number[];
+    try {
+      servicePointIds = JSON.parse(servicePointIdsStr);
+      itemIds = JSON.parse(itemIdsStr);
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in servicePointIds or itemIds' }, { status: 400 });
+    }
 
-    const itemIds: number[] = JSON.parse(itemIdsStr);
-    if (!itemIds.length) {
-      return NextResponse.json({ error: 'itemIds must not be empty' }, { status: 400 });
+    if (!Array.isArray(servicePointIds) || !Array.isArray(itemIds) || !itemIds.length) {
+      return NextResponse.json({ error: 'servicePointIds and itemIds must be non-empty arrays' }, { status: 400 });
+    }
+
+    // Validate file sizes (max 10MB each)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (equipImage.size > MAX_FILE_SIZE || overallImage.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'Each image must be under 10MB' }, { status: 400 });
+    }
+
+    // Validate file types
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!validTypes.includes(equipImage.type) || !validTypes.includes(overallImage.type)) {
+      return NextResponse.json({ error: 'Only JPEG, PNG, WebP, and HEIC images are allowed' }, { status: 400 });
     }
 
     const token = await getApiToken();

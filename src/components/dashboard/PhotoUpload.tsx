@@ -132,6 +132,10 @@ function UploadForm({
     setStepOverallPreviews((prev) => { const n = [...prev]; n[currentStep] = url; return n; });
   }, [currentStep]);
 
+  // Use a ref to always have the latest stepResults without stale closures
+  const stepResultsRef = useRef(stepResults);
+  stepResultsRef.current = stepResults;
+
   const handleUploadStep = useCallback(async () => {
     const equipFile = stepEquipFiles[currentStep];
     const overallFile = stepOverallFiles[currentStep];
@@ -140,10 +144,10 @@ function UploadForm({
     setUploading(true);
     setStepResults((prev) => { const n = [...prev]; n[currentStep] = 'uploading'; return n; });
 
-    // Check if this will be the last item
-    const updatedResults = [...stepResults];
-    updatedResults[currentStep] = 'success'; // optimistic
-    const willBeComplete = updatedResults.every((r) => r === 'success');
+    // Check if this will be the last item (use ref for fresh data)
+    const latestResults = [...stepResultsRef.current];
+    latestResults[currentStep] = 'success'; // optimistic
+    const willBeComplete = latestResults.every((r) => r === 'success');
 
     const formData = new FormData();
     formData.append('servicePointIds', JSON.stringify(point.ids));
@@ -158,16 +162,21 @@ function UploadForm({
       const r = await fetch('/api/upload/submit', { method: 'POST', body: formData });
       const data = await r.json();
       const success = data.results?.[0]?.success ?? false;
-      setStepResults((prev) => { const n = [...prev]; n[currentStep] = success ? 'success' : 'failed'; return n; });
+
+      // Update results via functional setter and capture the new array
+      let newResults: typeof stepResults = [];
+      setStepResults((prev) => {
+        newResults = [...prev];
+        newResults[currentStep] = success ? 'success' : 'failed';
+        return newResults;
+      });
 
       // Auto-advance to next pending step
       if (success) {
-        const actualResults = [...stepResults];
-        actualResults[currentStep] = 'success';
-        const nextPending = subAssets.findIndex((_, i) => i > currentStep && actualResults[i] !== 'success');
+        const nextPending = subAssets.findIndex((_, i) => i > currentStep && newResults[i] !== 'success');
         if (nextPending >= 0) {
           setCurrentStep(nextPending);
-        } else if (actualResults.every((r) => r === 'success')) {
+        } else if (newResults.every((r) => r === 'success')) {
           setAllDone(true);
           onComplete();
         }
@@ -178,7 +187,7 @@ function UploadForm({
     } finally {
       setUploading(false);
     }
-  }, [currentStep, stepEquipFiles, stepOverallFiles, status, reason, point.ids, currentItem, subAssets, stepResults, onComplete]);
+  }, [currentStep, stepEquipFiles, stepOverallFiles, status, reason, point.ids, currentItem, subAssets, onComplete]);
 
   if (loading) {
     return (
