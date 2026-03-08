@@ -7,6 +7,17 @@ import {
   type InspectionImages,
 } from '@/lib/upload-utils';
 
+/** Rewrite raw MinIO URLs to go through our proxy to bypass CORS */
+function proxyImageUrls(images: InspectionImages): InspectionImages {
+  const rewrite = (url: string | null) =>
+    url ? `/api/upload/images/proxy?url=${encodeURIComponent(url)}` : null;
+  return {
+    ...images,
+    equipImageUrl: rewrite(images.equipImageUrl),
+    overallImageUrl: rewrite(images.overallImageUrl),
+  };
+}
+
 /** Single item fetch (backward compatible): GET /api/upload/images?item_id=123 */
 /** Batch fetch (new, faster):              GET /api/upload/images?item_ids=101,102,103 */
 export async function GET(request: NextRequest) {
@@ -29,7 +40,7 @@ export async function GET(request: NextRequest) {
         });
         if (!r.ok) throw new Error(`Failed to fetch item ${itemId}`);
         const data = await r.json();
-        return extractLatestImages(data.inspections);
+        return proxyImageUrls(extractLatestImages(data.inspections));
       };
 
       const result = await fetchBatchImages(validation.ids!, fetcher, 5);
@@ -54,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await r.json();
-    const images = extractLatestImages(data.inspections);
+    const images = proxyImageUrls(extractLatestImages(data.inspections));
 
     return NextResponse.json(images, {
       headers: { 'Cache-Control': 'private, max-age=60' },
