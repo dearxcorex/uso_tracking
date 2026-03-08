@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { UploadServicePoint, AssetSubItem } from '@/types';
+import { filterUploadPoints } from '@/lib/map-utils';
 
 /* ─── Status config ─── */
 const STATUS_OPTIONS = [
@@ -25,8 +26,8 @@ function PointCard({
   return (
     <button
       onClick={() => onExpand(point.assetId)}
-      className={`w-full text-left clay-card p-4 transition-all ${
-        isExpanded ? 'ring-2 ring-primary' : 'hover:shadow-md'
+      className={`w-full text-left clay-card p-3 transition-all ${
+        isExpanded ? 'ring-1 ring-primary' : 'hover:shadow-md'
       }`}
     >
       <div className="flex items-center justify-between">
@@ -45,14 +46,14 @@ function PointCard({
                 {point.pointCount} จุดบริการ
               </span>
             )}
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
               point.uploadStatus === 'uploaded'
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                ? 'bg-emerald-600 text-white dark:bg-emerald-500'
                 : point.uploadStatus === 'partial'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                ? 'bg-amber-600 text-white dark:bg-amber-500'
+                : 'bg-gray-500 text-white dark:bg-gray-400 dark:text-gray-900'
             }`}>
-              {point.uploadStatus === 'uploaded' ? 'อัปโหลดแล้ว' : point.uploadStatus === 'partial' ? 'อัปโหลดบางส่วน' : 'รอดำเนินการ'}
+              {point.uploadStatus === 'uploaded' ? 'อัปโหลดแล้ว' : point.uploadStatus === 'partial' ? 'บางส่วน' : 'รอดำเนินการ'}
             </span>
           </div>
           <p className="text-sm font-medium mt-1 truncate">{point.serviceName}</p>
@@ -215,7 +216,7 @@ function UploadForm({
   }
 
   return (
-    <div className="clay-card p-4 space-y-3 max-w-lg">
+    <div className="clay-card p-3 space-y-2.5 max-w-lg">
       {/* Progress dots */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -423,6 +424,8 @@ export default function PhotoUpload() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'uploaded'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const fetchPoints = useCallback(async () => {
     try {
@@ -451,13 +454,16 @@ export default function PhotoUpload() {
 
   useEffect(() => { fetchPoints(); }, [fetchPoints]);
 
-  const filteredPoints = points.filter((p) => {
-    if (filter === 'pending') return p.uploadStatus === 'pending' || p.uploadStatus === 'partial';
-    if (filter === 'uploaded') return p.uploadStatus === 'uploaded';
-    return true;
-  });
+  const filteredPoints = useMemo(() => filterUploadPoints(points, filter), [points, filter]);
 
-  const pendingCards = points.filter((p) => p.uploadStatus === 'pending' || p.uploadStatus === 'partial').length;
+  const totalPages = Math.max(1, Math.ceil(filteredPoints.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedPoints = filteredPoints.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE
+  );
+
+  const pendingCards = useMemo(() => points.filter((p) => p.uploadStatus === 'pending' || p.uploadStatus === 'partial').length, [points]);
 
   if (loading) {
     return (
@@ -475,21 +481,23 @@ export default function PhotoUpload() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="clay-card p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">อัปโหลดรูปภาพ</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              {pendingCards > 0 ? `${pendingCards} รายการรอดำเนินการ` : 'ไม่มีรายการรอดำเนินการ'}
+      <div className="clay-card p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold">อัปโหลดรูปภาพ</h2>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              {pendingCards > 0 ? `${pendingCards} รอดำเนินการ` : 'ไม่มีรายการรอ'}
             </p>
           </div>
-          <div className="flex gap-1 bg-[var(--muted)]/20 rounded-lg p-1">
+          <div className="flex gap-0.5 bg-[var(--muted)]/20 rounded-md p-0.5 flex-shrink-0">
             {(['all', 'pending', 'uploaded'] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  filter === f ? 'bg-primary text-white' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                onClick={() => { setFilter(f); setCurrentPage(1); }}
+                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                  filter === f
+                    ? 'bg-[var(--foreground)]/10 text-[var(--foreground)]'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
               >
                 {f === 'all' ? 'ทั้งหมด' : f === 'pending' ? 'รอดำเนินการ' : 'เสร็จแล้ว'}
@@ -510,22 +518,68 @@ export default function PhotoUpload() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredPoints.map((point) => (
-            <div key={point.assetId}>
-              <PointCard
-                point={point}
-                onExpand={(assetId) => setExpandedId(expandedId === assetId ? null : assetId)}
-                isExpanded={expandedId === point.assetId}
-              />
-              {expandedId === point.assetId && (
-                <div className="mt-2 ml-2">
-                  <UploadForm point={point} onComplete={fetchPoints} />
-                </div>
-              )}
+        <>
+          <div className="space-y-3">
+            {paginatedPoints.map((point) => (
+              <div key={point.assetId}>
+                <PointCard
+                  point={point}
+                  onExpand={(assetId) => setExpandedId(expandedId === assetId ? null : assetId)}
+                  isExpanded={expandedId === point.assetId}
+                />
+                {expandedId === point.assetId && (
+                  <div className="mt-2 ml-2">
+                    <UploadForm point={point} onComplete={fetchPoints} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-3 py-2">
+              <p className="text-[11px] text-[var(--muted-foreground)]">
+                {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredPoints.length)} / {filteredPoints.length}
+              </p>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage <= 1}
+                  className="p-1.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-6 h-6 rounded text-[11px] font-medium transition-colors ${
+                      page === safeCurrentPage
+                        ? 'bg-[var(--foreground)]/10 text-[var(--foreground)]'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage >= totalPages}
+                  className="p-1.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

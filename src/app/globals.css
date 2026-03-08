@@ -218,26 +218,7 @@ h1, h2, h3, .font-heading {
   cursor: pointer;
 }
 
-/* Mobile Bottom Navigation — Clean */
-.mobile-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  z-index: var(--z-fixed);
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  box-shadow: 0 -1px 3px rgba(20, 184, 166, 0.06);
-}
-
-.dark .mobile-bottom-nav {
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.mobile-bottom-nav button {
-  cursor: pointer;
-}
+/* Mobile Slide-in Sidebar — handled via Tailwind in MobileNav.tsx */
 
 /* Status Badge Utility Classes */
 .badge-success {

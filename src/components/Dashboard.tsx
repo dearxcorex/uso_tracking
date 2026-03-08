@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { ActiveTab, USOStats, MapServicePoint } from '@/types';
 import NavSidebar from './NavSidebar';
@@ -28,6 +28,15 @@ interface DashboardProps {
 
 export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false);
+  }, []);
 
   const subtitleMap: Record<ActiveTab, string> = {
     dashboard: 'ภาพรวมจุดบริการ USO จังหวัดชัยภูมิ',
@@ -43,6 +52,7 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
         <AppHeader
           title="USONet"
           subtitle={subtitleMap[activeTab]}
+          onMenuToggle={toggleMobileMenu}
         />
 
         <div className="flex-1 overflow-y-auto scrollbar-stable p-4 lg:p-6 pb-20 lg:pb-6 space-y-4 lg:space-y-6">
@@ -74,7 +84,12 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
         </div>
       </main>
 
-      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <MobileNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isOpen={mobileMenuOpen}
+        onClose={closeMobileMenu}
+      />
     </div>
   );
 }

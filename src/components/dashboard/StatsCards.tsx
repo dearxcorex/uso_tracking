@@ -78,16 +78,16 @@ export default function StatsCards({ stats }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
       {statItems.map((item) => (
-        <div key={item.label} className="clay-card p-4 card-hover relative overflow-hidden">
+        <div key={item.label} className="clay-card p-3 card-hover relative overflow-hidden">
           <div className={`absolute top-0 left-0 w-1 h-full ${item.color}`} />
           <div className="pl-2">
-            <div className={`${item.iconColor} mb-2 opacity-70`}>
+            <div className={`${item.iconColor} mb-1.5 opacity-70`}>
               {item.icon}
             </div>
-            <div className="text-2xl font-semibold text-foreground tracking-tight">
+            <div className="text-xl font-semibold text-foreground tracking-tight">
               {(item.value ?? 0).toLocaleString()}
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{item.label}</div>
           </div>
         </div>
       ))}

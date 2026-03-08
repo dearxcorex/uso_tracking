@@ -6,17 +6,10 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapServicePoint } from '@/types';
-import { getProviderShort, providerColor } from '@/lib/map-utils';
+import { getProviderShort, providerColor, filterMapPoints, computeInspectionCounts } from '@/lib/map-utils';
+import type { MapFilters } from '@/lib/map-utils';
 
-type FilterType = 'all' | 'inspected' | 'not-inspected';
-
-interface MapFilters {
-  inspection: FilterType;
-  zone: string;
-  serviceName: string;
-  district: string;
-  provider: string;
-}
+type FilterType = MapFilters['inspection'];
 
 const defaultFilters: MapFilters = {
   inspection: 'all',
@@ -291,8 +284,10 @@ function LocationControl() {
 
 function FitBounds({ points }: { points: MapServicePoint[] }) {
   const map = useMap();
+  const hasFittedRef = useRef(false);
   useEffect(() => {
-    if (points.length === 0) return;
+    if (points.length === 0 || hasFittedRef.current) return;
+    hasFittedRef.current = true;
     const bounds = L.latLngBounds(points.map((p) => [p.latitude, p.longitude]));
     map.fitBounds(bounds, { padding: [30, 30] });
   }, [map, points]);
@@ -552,11 +547,7 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Separate counts state — re-renders filter pills only, not markers
-  const [counts, setCounts] = useState(() => ({
-    all: initialPoints.length,
-    inspected: initialPoints.filter((p) => p.inspected).length,
-    notInspected: initialPoints.filter((p) => !p.inspected).length,
-  }));
+  const [counts, setCounts] = useState(() => computeInspectionCounts(initialPoints));
 
   // Derive unique filter options from all points (computed once)
   const filterOptions = useMemo(() => {
@@ -579,16 +570,7 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
 
   const hasAdvancedFilters = filters.zone !== '' || filters.serviceName !== '' || filters.district !== '' || filters.provider !== '';
 
-  const filteredPoints = useMemo(() => {
-    let pts = allPointsRef.current;
-    if (filters.inspection === 'inspected') pts = pts.filter((p) => p.inspected);
-    else if (filters.inspection === 'not-inspected') pts = pts.filter((p) => !p.inspected);
-    if (filters.zone) pts = pts.filter((p) => p.zone === filters.zone);
-    if (filters.serviceName) pts = pts.filter((p) => p.serviceName === filters.serviceName);
-    if (filters.district) pts = pts.filter((p) => p.district === filters.district);
-    if (filters.provider) pts = pts.filter((p) => p.provider === filters.provider);
-    return pts;
-  }, [filters]);
+  const filteredPoints = useMemo(() => filterMapPoints(allPointsRef.current, filters), [filters]);
 
   const handleToggle = useCallback(async (id: number): Promise<boolean> => {
     const res = await fetch(`/api/service-points/${id}/inspect`, { method: 'PATCH' });
@@ -622,72 +604,62 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
       key: 'all',
       label: 'ทั้งหมด',
       count: counts.all,
-      activeClass: 'bg-primary/10 text-primary border-primary/30',
+      activeClass: 'bg-[var(--foreground)]/10 text-[var(--foreground)]',
     },
     {
       key: 'inspected',
       label: 'ตรวจแล้ว',
       count: counts.inspected,
-      activeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      activeClass: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400',
     },
     {
       key: 'not-inspected',
       label: 'ยังไม่ตรวจ',
       count: counts.notInspected,
-      activeClass: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30',
+      activeClass: 'bg-orange-600/15 text-orange-700 dark:text-orange-400',
     },
   ];
 
   return (
     <div className="flex flex-col animate-fade-in" style={{ height: 'calc(100dvh - 140px)', minHeight: '400px' }}>
       {/* Filter bar */}
-      <div className="clay-card p-2.5 shrink-0">
-        {/* Row 1: Inspection pills + result count + filter toggle */}
-        <div className="flex items-center gap-2">
-          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none flex-1">
+      <div className="clay-card p-2 shrink-0">
+        {/* Row 1: Inspection pills + filter toggle */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex gap-0.5 bg-[var(--muted)]/20 rounded-md p-0.5 flex-1 min-w-0">
             {inspectionButtons.map((btn) => (
               <button
                 key={btn.key}
                 onClick={() => updateFilter('inspection', btn.key)}
-                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap shrink-0 ${
+                className={`flex-1 inline-flex items-center justify-center gap-1 px-1.5 py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
                   filters.inspection === btn.key
                     ? btn.activeClass
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {btn.label}
-                <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
-                  filters.inspection === btn.key ? 'opacity-80' : 'bg-secondary text-muted-foreground'
-                }`}>
-                  {btn.count.toLocaleString()}
+                <span className="font-mono text-[10px] opacity-70">
+                  {btn.count}
                 </span>
               </button>
             ))}
           </div>
 
-          {/* Result count badge */}
-          <span className="text-xs text-muted-foreground font-mono whitespace-nowrap hidden sm:inline-flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            </svg>
-            {filteredPoints.length.toLocaleString()}
-          </span>
-
           {/* Filter toggle button */}
           <button
             onClick={() => setShowAdvancedFilters((v) => !v)}
-            className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors shrink-0 ${
+            className={`relative inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors shrink-0 ${
               showAdvancedFilters
-                ? 'bg-primary/10 text-primary border-primary/30'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary'
+                ? 'bg-[var(--foreground)]/10 text-[var(--foreground)]'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
             title="ตัวกรองขั้นสูง"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             {hasAdvancedFilters && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-violet-500 rounded-full border-2 border-card" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-violet-500 rounded-full border border-card" />
             )}
           </button>
         </div>
