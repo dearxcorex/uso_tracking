@@ -85,6 +85,106 @@ describe('PhotoUpload', () => {
   });
 });
 
+describe('PhotoUpload - toggle status button', () => {
+  it('should show "เสร็จแล้ว" button on pending cards', async () => {
+    render(<PhotoUpload />);
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+    expect(screen.getByTitle('ทำเครื่องหมายว่าอัปโหลดแล้ว')).toBeInTheDocument();
+  });
+
+  it('should show "ยกเลิก" button on uploaded cards', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/upload/pending')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([{
+            ...mockPendingPoints[0],
+            upload_status: 'uploaded',
+            uploaded_at: '2026-03-08T12:00:00Z',
+          }]),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<PhotoUpload />);
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+    expect(screen.getByTitle('เปลี่ยนเป็นรอดำเนินการ')).toBeInTheDocument();
+  });
+
+  it('should toggle pending → uploaded when clicking toggle button', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    // Status should be pending (appears in filter tab + card, just verify at least one exists)
+    expect(screen.getAllByText('รอดำเนินการ').length).toBeGreaterThanOrEqual(1);
+
+    // Mock toggle API
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url.includes('/api/upload/toggle-status') && opts?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ upload_status: 'uploaded', uploaded_at: '2026-03-08T12:00:00Z' }),
+        });
+      }
+      if (url.includes('/api/upload/pending')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPendingPoints) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    // Click the toggle button (not the status text)
+    const toggleBtn = screen.getByTitle('ทำเครื่องหมายว่าอัปโหลดแล้ว');
+    await user.click(toggleBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTitle('เปลี่ยนเป็นรอดำเนินการ')).toBeInTheDocument();
+    });
+  });
+
+  it('should send correct payload to toggle API', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url.includes('/api/upload/toggle-status')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ upload_status: 'uploaded', uploaded_at: '2026-03-08T12:00:00Z' }),
+        });
+      }
+      if (url.includes('/api/upload/pending')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPendingPoints) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    const toggleBtn = screen.getByTitle('ทำเครื่องหมายว่าอัปโหลดแล้ว');
+    await user.click(toggleBtn);
+
+    await waitFor(() => {
+      const toggleCall = mockFetch.mock.calls.find(
+        (c: [string, RequestInit?]) => typeof c[0] === 'string' && c[0].includes('toggle-status')
+      );
+      expect(toggleCall).toBeDefined();
+      const body = JSON.parse(toggleCall![1]?.body as string);
+      expect(body.ids).toEqual([1]);
+    });
+  });
+});
+
 describe('PhotoUpload - file input reset bug', () => {
   it('should reset file input value after selecting a file so onChange fires again', async () => {
     const user = userEvent.setup();
@@ -143,9 +243,132 @@ describe('PhotoUpload - file input reset bug', () => {
 
     // Preview image should appear
     await waitFor(() => {
-      const img = screen.getByAltText('Equipment');
+      const img = screen.getByAltText('ภาพอุปกรณ์ (ใกล้)');
       expect(img).toBeInTheDocument();
       expect(img).toHaveAttribute('src', 'blob:mock-url');
     });
+  });
+});
+
+describe('PhotoUpload - image replace and delete', () => {
+  it('should show เปลี่ยนรูป and ลบ buttons after selecting a file', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('AST-001'));
+
+    await waitFor(() => {
+      expect(screen.getByText('รายการที่ 1 / 2')).toBeInTheDocument();
+    });
+
+    const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    await user.upload(fileInputs[0], createMockFile('equip.jpg'));
+
+    await waitFor(() => {
+      expect(screen.getByAltText('ภาพอุปกรณ์ (ใกล้)')).toBeInTheDocument();
+    });
+
+    // เปลี่ยนรูป and ลบ buttons should appear
+    const replaceButtons = screen.getAllByText('เปลี่ยนรูป');
+    expect(replaceButtons.length).toBeGreaterThanOrEqual(1);
+    const deleteButtons = screen.getAllByText('ลบ');
+    expect(deleteButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should clear preview when clicking ลบ button', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('AST-001'));
+
+    await waitFor(() => {
+      expect(screen.getByText('รายการที่ 1 / 2')).toBeInTheDocument();
+    });
+
+    const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    await user.upload(fileInputs[0], createMockFile('equip.jpg'));
+
+    // Verify preview appears
+    await waitFor(() => {
+      expect(screen.getByAltText('ภาพอุปกรณ์ (ใกล้)')).toBeInTheDocument();
+    });
+
+    // Click ลบ to clear
+    const deleteBtn = screen.getAllByText('ลบ')[0];
+    await user.click(deleteBtn);
+
+    // Preview should be gone, placeholder should return
+    await waitFor(() => {
+      expect(screen.getByText('ถ่ายรูปอุปกรณ์นี้')).toBeInTheDocument();
+    });
+  });
+
+  it('should open file picker when clicking เปลี่ยนรูป button', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('AST-001'));
+
+    await waitFor(() => {
+      expect(screen.getByText('รายการที่ 1 / 2')).toBeInTheDocument();
+    });
+
+    // Upload a file first
+    const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    await user.upload(fileInputs[0], createMockFile('equip.jpg'));
+
+    await waitFor(() => {
+      expect(screen.getByAltText('ภาพอุปกรณ์ (ใกล้)')).toBeInTheDocument();
+    });
+
+    // Spy on input click
+    const input = document.querySelectorAll<HTMLInputElement>('input[type="file"]')[0];
+    const clickSpy = vi.spyOn(input, 'click');
+
+    // Click เปลี่ยนรูป
+    const replaceBtn = screen.getAllByText('เปลี่ยนรูป')[0];
+    await user.click(replaceBtn);
+
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
+  });
+
+  it('should open file picker when clicking the photo area', async () => {
+    const user = userEvent.setup();
+    render(<PhotoUpload />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AST-001')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('AST-001'));
+
+    await waitFor(() => {
+      expect(screen.getByText('รายการที่ 1 / 2')).toBeInTheDocument();
+    });
+
+    // Spy on first file input click
+    const input = document.querySelectorAll<HTMLInputElement>('input[type="file"]')[0];
+    const clickSpy = vi.spyOn(input, 'click');
+
+    // Click the photo area button (contains placeholder text)
+    const photoArea = screen.getByText('ถ่ายรูปอุปกรณ์นี้').closest('button');
+    expect(photoArea).not.toBeNull();
+    await user.click(photoArea!);
+
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
   });
 });

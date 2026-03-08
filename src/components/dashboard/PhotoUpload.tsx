@@ -18,57 +18,187 @@ function PointCard({
   point,
   onExpand,
   isExpanded,
+  onToggleStatus,
 }: {
   point: UploadServicePoint;
   onExpand: (assetId: string) => void;
   isExpanded: boolean;
+  onToggleStatus: (point: UploadServicePoint) => void;
 }) {
+  const [toggling, setToggling] = useState(false);
+  const isUploaded = point.uploadStatus === 'uploaded';
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setToggling(true);
+    try {
+      await onToggleStatus(point);
+    } finally {
+      setToggling(false);
+    }
+  };
+
   return (
-    <button
+    <div
       onClick={() => onExpand(point.assetId)}
-      className={`w-full text-left clay-card p-3 transition-all ${
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onExpand(point.assetId); }}
+      className={`w-full text-left clay-card overflow-hidden transition-all cursor-pointer ${
         isExpanded ? 'ring-1 ring-primary' : 'hover:shadow-md'
-      }`}
+      } ${isUploaded ? 'opacity-60' : ''}`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">
+      <div className="flex">
+        {/* Left accent stripe */}
+        <div className={`w-1 shrink-0 ${
+          isUploaded
+            ? 'bg-emerald-500'
+            : point.uploadStatus === 'partial'
+            ? 'bg-amber-500'
+            : 'bg-gray-300 dark:bg-gray-600'
+        }`} />
+
+        <div className="flex-1 min-w-0 p-3">
+          {/* Row 1: Asset ID + status */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-mono text-[var(--muted-foreground)]">
               {point.assetId}
             </span>
-            {point.oAssetId && (
-              <span className="text-xs font-mono text-[var(--muted-foreground)] bg-[var(--muted)]/20 px-1.5 py-0.5 rounded">
-                {point.oAssetId}
-              </span>
-            )}
-            {point.pointCount > 1 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                {point.pointCount} จุดบริการ
-              </span>
-            )}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-              point.uploadStatus === 'uploaded'
-                ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                : point.uploadStatus === 'partial'
-                ? 'bg-amber-600 text-white dark:bg-amber-500'
-                : 'bg-gray-500 text-white dark:bg-gray-400 dark:text-gray-900'
-            }`}>
-              {point.uploadStatus === 'uploaded' ? 'อัปโหลดแล้ว' : point.uploadStatus === 'partial' ? 'บางส่วน' : 'รอดำเนินการ'}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isUploaded ? (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  เสร็จแล้ว
+                </span>
+              ) : point.uploadStatus === 'partial' ? (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">บางส่วน</span>
+              ) : (
+                <span className="text-[10px] text-[var(--muted-foreground)]">รอดำเนินการ</span>
+              )}
+              <svg
+                className={`w-4 h-4 text-[var(--muted-foreground)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
-          <p className="text-sm font-medium mt-1 truncate">{point.serviceName}</p>
-          <p className="text-xs text-[var(--muted-foreground)] truncate">
-            {point.village} {point.district}
-          </p>
+
+          {/* Row 2: Service name */}
+          <p className="text-sm font-medium mt-0.5 truncate">{point.serviceName}</p>
+
+          {/* Row 3: Location + toggle */}
+          <div className="flex items-center justify-between mt-1 gap-2">
+            <p className="text-[11px] text-[var(--muted-foreground)] truncate">
+              {point.village} {point.district}
+              {point.pointCount > 1 && (
+                <span className="ml-1 text-blue-600 dark:text-blue-400">({point.pointCount} จุด)</span>
+              )}
+            </p>
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${
+                isUploaded
+                  ? 'border-orange-300 text-orange-600 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20'
+                  : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
+              } ${toggling ? 'opacity-50' : ''}`}
+              title={isUploaded ? 'เปลี่ยนเป็นรอดำเนินการ' : 'ทำเครื่องหมายว่าอัปโหลดแล้ว'}
+            >
+              {toggling ? '...' : isUploaded ? 'ยกเลิก' : 'เสร็จแล้ว'}
+            </button>
+          </div>
         </div>
-        <svg
-          className={`w-5 h-5 text-[var(--muted-foreground)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
       </div>
-    </button>
+    </div>
+  );
+}
+
+/* ─── Sub-component: Photo Slot (single photo upload area) ─── */
+function PhotoSlot({
+  label,
+  placeholder,
+  preview,
+  existingImage,
+  onFileSelect,
+  onDelete,
+}: {
+  label: string;
+  placeholder: string;
+  preview: string | null;
+  existingImage: string | null;
+  onFileSelect: (file: File) => void;
+  onDelete: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasImage = preview || existingImage;
+
+  const openPicker = () => {
+    inputRef.current?.click();
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) onFileSelect(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div>
+      <h4 className="text-xs font-semibold mb-1">{label}</h4>
+      <button
+        type="button"
+        onClick={openPicker}
+        className="w-full h-28 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 active:bg-primary/10 transition-colors overflow-hidden relative"
+      >
+        {preview ? (
+          <img src={preview} alt={label} className="w-full h-full object-cover" />
+        ) : existingImage ? (
+          <>
+            <img src={existingImage} alt={label} className="w-full h-full object-cover opacity-70" />
+            <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded">มีรูปแล้ว</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-6 h-6 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-[10px] text-[var(--muted-foreground)] mt-1">{placeholder}</span>
+          </>
+        )}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleChange}
+      />
+      {hasImage && (
+        <div className="flex gap-1 mt-1">
+          <button
+            type="button"
+            onClick={openPicker}
+            className="flex-1 text-center text-[10px] py-1.5 rounded bg-primary/10 text-primary font-medium active:bg-primary/20"
+          >
+            เปลี่ยนรูป
+          </button>
+          {preview && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-[10px] px-2 py-1.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium active:bg-red-500/20"
+            >
+              ลบ
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -93,17 +223,19 @@ function UploadForm({
   const [stepOverallPreviews, setStepOverallPreviews] = useState<(string | null)[]>([]);
   const [stepResults, setStepResults] = useState<('pending' | 'uploading' | 'success' | 'failed')[]>([]);
 
+  // Existing images from server
+  const [existingEquipImages, setExistingEquipImages] = useState<(string | null)[]>([]);
+  const [existingOverallImages, setExistingOverallImages] = useState<(string | null)[]>([]);
+
   const [uploading, setUploading] = useState(false);
   const [allDone, setAllDone] = useState(false);
-  const equipRef = useRef<HTMLInputElement>(null);
-  const overallRef = useRef<HTMLInputElement>(null);
 
-  // Fetch sub-assets
+  // Fetch sub-assets then load existing images
   useEffect(() => {
     setLoading(true);
     fetch(`/api/upload/sub-assets?asset_id=${point.assetId}`)
       .then((r) => r.json())
-      .then((data) => {
+      .then(async (data) => {
         const items: AssetSubItem[] = data.items || [];
         setSubAssets(items);
         setStepEquipFiles(new Array(items.length).fill(null));
@@ -111,6 +243,26 @@ function UploadForm({
         setStepOverallFiles(new Array(items.length).fill(null));
         setStepOverallPreviews(new Array(items.length).fill(null));
         setStepResults(new Array(items.length).fill('pending'));
+
+        // Batch-fetch existing images in a single request (much faster than N individual calls)
+        const equipImgs: (string | null)[] = new Array(items.length).fill(null);
+        const overallImgs: (string | null)[] = new Array(items.length).fill(null);
+        try {
+          const ids = items.map((item) => item.id).join(',');
+          const r = await fetch(`/api/upload/images?item_ids=${ids}`);
+          if (r.ok) {
+            const batch = await r.json();
+            items.forEach((item, i) => {
+              const img = batch[String(item.id)];
+              if (img) {
+                if (img.equipImageUrl) equipImgs[i] = img.equipImageUrl;
+                if (img.overallImageUrl) overallImgs[i] = img.overallImageUrl;
+              }
+            });
+          }
+        } catch { /* ignore — existing images are non-critical */ }
+        setExistingEquipImages([...equipImgs]);
+        setExistingOverallImages([...overallImgs]);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -118,20 +270,6 @@ function UploadForm({
 
   const currentItem = subAssets[currentStep];
   const completedCount = stepResults.filter((r) => r === 'success').length;
-
-  const handleEquipFile = useCallback((file: File | null) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setStepEquipFiles((prev) => { const n = [...prev]; n[currentStep] = file; return n; });
-    setStepEquipPreviews((prev) => { const n = [...prev]; n[currentStep] = url; return n; });
-  }, [currentStep]);
-
-  const handleOverallFile = useCallback((file: File | null) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setStepOverallFiles((prev) => { const n = [...prev]; n[currentStep] = file; return n; });
-    setStepOverallPreviews((prev) => { const n = [...prev]; n[currentStep] = url; return n; });
-  }, [currentStep]);
 
   // Use a ref to always have the latest stepResults without stale closures
   const stepResultsRef = useRef(stepResults);
@@ -309,47 +447,38 @@ function UploadForm({
 
       {/* Photo uploads for current step */}
       <div className="grid grid-cols-2 gap-3 max-w-md">
-        <div>
-          <h4 className="text-xs font-semibold mb-1">ภาพอุปกรณ์ (ใกล้)</h4>
-          <div
-            onClick={() => equipRef.current?.click()}
-            className="h-28 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors overflow-hidden"
-          >
-            {stepEquipPreviews[currentStep] ? (
-              <img src={stepEquipPreviews[currentStep]!} alt="Equipment" className="w-full h-full object-cover" />
-            ) : (
-              <>
-                <svg className="w-6 h-6 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-[10px] text-[var(--muted-foreground)] mt-1">ถ่ายรูปอุปกรณ์นี้</span>
-              </>
-            )}
-          </div>
-          <input ref={equipRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleEquipFile(e.target.files?.[0] || null); e.target.value = ''; }} />
-        </div>
-
-        <div>
-          <h4 className="text-xs font-semibold mb-1">ภาพโดยรวม (ไกล)</h4>
-          <div
-            onClick={() => overallRef.current?.click()}
-            className="h-28 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors overflow-hidden"
-          >
-            {stepOverallPreviews[currentStep] ? (
-              <img src={stepOverallPreviews[currentStep]!} alt="Overall" className="w-full h-full object-cover" />
-            ) : (
-              <>
-                <svg className="w-6 h-6 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-[10px] text-[var(--muted-foreground)] mt-1">ถ่ายภาพโดยรวม</span>
-              </>
-            )}
-          </div>
-          <input ref={overallRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleOverallFile(e.target.files?.[0] || null); e.target.value = ''; }} />
-        </div>
+        <PhotoSlot
+          key={`equip-${currentStep}`}
+          label="ภาพอุปกรณ์ (ใกล้)"
+          placeholder="ถ่ายรูปอุปกรณ์นี้"
+          preview={stepEquipPreviews[currentStep]}
+          existingImage={existingEquipImages[currentStep]}
+          onFileSelect={(file) => {
+            const url = URL.createObjectURL(file);
+            setStepEquipFiles((prev) => { const n = [...prev]; n[currentStep] = file; return n; });
+            setStepEquipPreviews((prev) => { const n = [...prev]; n[currentStep] = url; return n; });
+          }}
+          onDelete={() => {
+            setStepEquipFiles((p) => { const n = [...p]; n[currentStep] = null; return n; });
+            setStepEquipPreviews((p) => { const n = [...p]; n[currentStep] = null; return n; });
+          }}
+        />
+        <PhotoSlot
+          key={`overall-${currentStep}`}
+          label="ภาพโดยรวม (ไกล)"
+          placeholder="ถ่ายภาพโดยรวม"
+          preview={stepOverallPreviews[currentStep]}
+          existingImage={existingOverallImages[currentStep]}
+          onFileSelect={(file) => {
+            const url = URL.createObjectURL(file);
+            setStepOverallFiles((prev) => { const n = [...prev]; n[currentStep] = file; return n; });
+            setStepOverallPreviews((prev) => { const n = [...prev]; n[currentStep] = url; return n; });
+          }}
+          onDelete={() => {
+            setStepOverallFiles((p) => { const n = [...p]; n[currentStep] = null; return n; });
+            setStepOverallPreviews((p) => { const n = [...p]; n[currentStep] = null; return n; });
+          }}
+        />
       </div>
 
       {/* Action buttons */}
@@ -454,6 +583,23 @@ export default function PhotoUpload() {
 
   useEffect(() => { fetchPoints(); }, [fetchPoints]);
 
+  const handleToggleStatus = useCallback(async (point: UploadServicePoint) => {
+    const res = await fetch('/api/upload/toggle-status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: point.ids }),
+    });
+    if (!res.ok) throw new Error('Toggle failed');
+    const data = await res.json();
+    setPoints((prev) =>
+      prev.map((p) =>
+        p.assetId === point.assetId
+          ? { ...p, uploadStatus: data.upload_status, uploadedAt: data.uploaded_at }
+          : p
+      )
+    );
+  }, []);
+
   const filteredPoints = useMemo(() => filterUploadPoints(points, filter), [points, filter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPoints.length / ITEMS_PER_PAGE));
@@ -526,6 +672,7 @@ export default function PhotoUpload() {
                   point={point}
                   onExpand={(assetId) => setExpandedId(expandedId === assetId ? null : assetId)}
                   isExpanded={expandedId === point.assetId}
+                  onToggleStatus={handleToggleStatus}
                 />
                 {expandedId === point.assetId && (
                   <div className="mt-2 ml-2">
