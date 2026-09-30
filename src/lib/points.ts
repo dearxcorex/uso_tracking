@@ -82,6 +82,11 @@ export function computeStats(points: VisitSite[]): VisitStats {
     return out;
   };
   const schools = points.filter((p) => p.serviceName === SCHOOL_SERVICE);
+  const byDepartmentService: Record<string, Record<string, number>> = {};
+  for (const p of points) {
+    const byService = (byDepartmentService[p.department] ??= {});
+    byService[p.serviceName] = (byService[p.serviceName] ?? 0) + 1;
+  }
 
   return {
     total: points.length,
@@ -91,6 +96,7 @@ export function computeStats(points: VisitSite[]): VisitStats {
     inspected: points.filter((p) => p.inspected).length,
     byRound: countBy((p) => p.round),
     byDepartment: countBy((p) => p.department),
+    byDepartmentService,
     byServiceName: countBy((p) => p.serviceName),
     byDistrict: countBy((p) => p.district),
     byProvider: countBy((p) => p.provider),

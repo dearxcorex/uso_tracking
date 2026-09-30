@@ -32,6 +32,8 @@ export interface VisitStats {
   inspected: number;
   byRound: Record<string, number>;
   byDepartment: Record<string, number>;
+  /** department -> service name -> count */
+  byDepartmentService: Record<string, Record<string, number>>;
   byServiceName: Record<string, number>;
   byDistrict: Record<string, number>;
   byProvider: Record<string, number>;

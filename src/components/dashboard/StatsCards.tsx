@@ -33,14 +33,13 @@ const ICONS = {
   ),
 } as Record<string, React.ReactNode>;
 
+const SERVICES = [SCHOOL_SERVICE, VILLAGE_SERVICE];
+const SERVICE_SHORT: Record<string, string> = { [SCHOOL_SERVICE]: 'โรงเรียน', [VILLAGE_SERVICE]: 'หมู่บ้าน' };
+
 export default function StatsCards({ stats }: StatsCardsProps) {
-  const statItems = [
+  const summaryItems = [
     { label: 'จุดลงพื้นที่ทั้งหมด', value: stats.total, bar: DEFAULT_STYLE.bar, text: DEFAULT_STYLE.text, icon: ICONS.point },
-    ...DEPARTMENTS.map((dept) => {
-      const style = getDepartmentStyle(dept);
-      return { label: `หน่วยงาน ${dept}`, value: stats.byDepartment[dept] ?? 0, bar: style.bar, text: style.text, icon: ICONS.department };
-    }),
-    ...[SCHOOL_SERVICE, VILLAGE_SERVICE].map((name) => {
+    ...SERVICES.map((name) => {
       const style = getServiceStyle(name);
       return { label: name, value: stats.byServiceName[name] ?? 0, bar: style.bar, text: style.text, icon: ICONS[name] };
     }),
@@ -48,9 +47,9 @@ export default function StatsCards({ stats }: StatsCardsProps) {
   const rounds = Object.entries(stats.byRound).sort((a, b) => a[0].localeCompare(b[0], 'th', { numeric: true }));
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
-        {statItems.map((item) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-3">
+        {summaryItems.map((item) => (
           <div key={item.label} className="clay-card p-3 card-hover relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-1 h-full ${item.bar}`} />
             <div className="pl-2">
@@ -65,6 +64,52 @@ export default function StatsCards({ stats }: StatsCardsProps) {
           </div>
         ))}
       </div>
+
+      <div>
+        <h3 className="text-xs font-medium text-muted-foreground mb-2">แยกตามหน่วยงาน</h3>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          {DEPARTMENTS.map((dept) => {
+            const style = getDepartmentStyle(dept);
+            const total = stats.byDepartment[dept] ?? 0;
+            const byService = stats.byDepartmentService[dept] ?? {};
+            return (
+              <div key={dept} className="clay-card p-3 card-hover relative overflow-hidden">
+                <div className={`absolute top-0 left-0 w-1 h-full ${style.bar}`} />
+                <div className="pl-2">
+                  <div className="flex items-center justify-between">
+                    <div className={`${style.text} opacity-70`}>{ICONS.department}</div>
+                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${style.badge}`}>{dept}</span>
+                  </div>
+                  <div className="mt-1.5 text-xl font-semibold text-foreground tracking-tight">
+                    {total.toLocaleString()}
+                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">จุด</span>
+                  </div>
+                  <div className="mt-2 flex h-1.5 rounded-full overflow-hidden bg-muted">
+                    {SERVICES.map((name) => {
+                      const count = byService[name] ?? 0;
+                      return count > 0 && (
+                        <div key={name} className={getServiceStyle(name).bar} style={{ width: `${(count / total) * 100}%` }} />
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 space-y-0.5">
+                    {SERVICES.map((name) => (
+                      <div key={name} className="flex items-center justify-between text-[11px]">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className={`w-1.5 h-1.5 rounded-full ${getServiceStyle(name).bar}`} />
+                          {SERVICE_SHORT[name]}
+                        </span>
+                        <span className="font-medium text-foreground tabular-nums">{byService[name] ?? 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <p className="text-[11px] text-muted-foreground">
         {rounds.map(([round, count]) => `${round} ${count} จุด`).join(' · ')}
         {` · ตรวจแล้ว ${stats.inspected}/${stats.total}`}

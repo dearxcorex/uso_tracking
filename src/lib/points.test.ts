@@ -122,7 +122,23 @@ describe('computeStats', () => {
     expect(stats.byRound).toEqual({ 'ค.9': 2, 'ค.10': 1 });
     expect(stats.byDepartment).toEqual({ 'อภ.': 1, 'บภ.': 1, 'ตภ.': 1 });
     expect(stats.byServiceName).toEqual({ 'Wi-Fi หมู่บ้าน': 1, 'Wi-Fi โรงเรียน': 2 });
+    expect(stats.byDepartmentService['อภ.']).toEqual({ 'Wi-Fi หมู่บ้าน': 1 });
     expect(Object.values(stats.byProvider).reduce((a, b) => a + b, 0)).toBe(3);
+  });
+});
+
+describe('computeStats byDepartmentService', () => {
+  it('splits each department by service', () => {
+    const stats = computeStats([
+      makeSite({ id: 1 }),
+      makeSite({ id: 2, deptSeq: 2 }),
+      makeSite({ id: 3, serviceName: 'Wi-Fi โรงเรียน' }),
+      makeSite({ id: 4, department: 'ผภ.', serviceName: 'Wi-Fi โรงเรียน' }),
+    ]);
+    expect(stats.byDepartmentService).toEqual({
+      'อภ.': { 'Wi-Fi หมู่บ้าน': 2, 'Wi-Fi โรงเรียน': 1 },
+      'ผภ.': { 'Wi-Fi โรงเรียน': 1 },
+    });
   });
 });
 
