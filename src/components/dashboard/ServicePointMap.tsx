@@ -125,7 +125,8 @@ function LocationControl() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       updatePosition,
       (err) => {
-        console.error('Geolocation error:', err);
+        // Expected when permission is denied or no fix is available; warn so the dev overlay stays quiet
+        console.warn(`Geolocation unavailable (code ${err.code}): ${err.message}`);
         setStatus('error');
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
