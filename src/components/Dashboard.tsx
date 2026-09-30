@@ -1,34 +1,34 @@
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { ActiveTab, USOStats, MapServicePoint } from '@/types';
+import { ActiveTab, VisitSite } from '@/types';
+import { computeStats } from '@/lib/points';
 import NavSidebar from './NavSidebar';
 import AppHeader from './client/AppHeader';
 import MobileNav from './client/MobileNav';
+import { navItems } from './navItems';
 
 const StatsCards = dynamic(() => import('./dashboard/StatsCards'));
 const DistrictBreakdown = dynamic(() => import('./dashboard/DistrictBreakdown'));
 const ProviderChart = dynamic(() => import('./dashboard/ProviderChart'));
+const PointList = dynamic(() => import('./dashboard/PointList'));
+const PointDetail = dynamic(() => import('./dashboard/PointDetail'));
 const ServicePointMap = dynamic(() => import('./dashboard/ServicePointMap'), { ssr: false });
-const PhotoUpload = dynamic(() => import('./dashboard/PhotoUpload'));
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-muted/50 rounded-xl ${className}`} />;
 }
 
-function MapSkeleton() {
-  return <Skeleton className="h-[500px]" />;
-}
-
 interface DashboardProps {
-  stats: USOStats;
-  initialMapPoints: MapServicePoint[];
+  points: VisitSite[];
 }
 
-export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
+export default function Dashboard({ points: initialPoints }: DashboardProps) {
+  const [points, setPoints] = useState(initialPoints);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedPointId, setSelectedPointId] = useState<number | null>(null);
 
   const toggleMobileMenu = useCallback(() => {
     setMobileMenuOpen((prev) => !prev);
@@ -38,11 +38,19 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
     setMobileMenuOpen(false);
   }, []);
 
-  const subtitleMap: Record<ActiveTab, string> = {
-    dashboard: 'ภาพรวมจุดบริการ USO จังหวัดชัยภูมิ',
-    map: 'แผนที่จุดบริการ USO',
-    upload: 'อัปโหลดรูปภาพการตรวจ',
-  };
+  const closeDetail = useCallback(() => {
+    setSelectedPointId(null);
+  }, []);
+
+  /** Apply a saved inspection status to the in-memory site list */
+  const handleInspected = useCallback((id: number, inspected: boolean, inspectedAt: string | null) => {
+    setPoints((prev) => prev.map((p) => (p.id === id ? { ...p, inspected, inspectedAt } : p)));
+  }, []);
+
+  const stats = useMemo(() => computeStats(points), [points]);
+  const selectedPoint = points.find((p) => p.id === selectedPointId) ?? null;
+
+  const subtitle = navItems.find((item) => item.id === activeTab)?.subtitle;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -51,7 +59,7 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
       <main className="flex-1 flex flex-col overflow-hidden">
         <AppHeader
           title="USONet"
-          subtitle={subtitleMap[activeTab]}
+          subtitle={subtitle}
           onMenuToggle={toggleMobileMenu}
         />
 
@@ -61,24 +69,24 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
               <StatsCards stats={stats} />
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
                 <div className="xl:col-span-2">
-                  <DistrictBreakdown byDistrict={stats.byDistrict} byDistrictInspected={stats.byDistrictInspected} total={stats.totalPoints} />
+                  <DistrictBreakdown byDistrict={stats.byDistrict} />
                 </div>
                 <div>
-                  <ProviderChart byProvider={stats.byProvider} total={stats.totalPoints} />
+                  <ProviderChart byProvider={stats.byProvider} total={stats.total} />
                 </div>
               </div>
             </>
           )}
 
-          {activeTab === 'map' && (
-            <Suspense fallback={<MapSkeleton />}>
-              <ServicePointMap initialPoints={initialMapPoints} />
+          {activeTab === 'points' && (
+            <Suspense fallback={<Skeleton className="h-96" />}>
+              <PointList points={points} onSelect={setSelectedPointId} />
             </Suspense>
           )}
 
-          {activeTab === 'upload' && (
-            <Suspense fallback={<Skeleton className="h-96" />}>
-              <PhotoUpload />
+          {activeTab === 'map' && (
+            <Suspense fallback={<Skeleton className="h-[500px]" />}>
+              <ServicePointMap points={points} onSelect={setSelectedPointId} onInspected={handleInspected} />
             </Suspense>
           )}
         </div>
@@ -90,6 +98,10 @@ export default function Dashboard({ stats, initialMapPoints }: DashboardProps) {
         isOpen={mobileMenuOpen}
         onClose={closeMobileMenu}
       />
+
+      {selectedPoint && (
+        <PointDetail point={selectedPoint} onClose={closeDetail} />
+      )}
     </div>
   );
 }

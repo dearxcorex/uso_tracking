@@ -17,8 +17,8 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   title: "USONet | USO Dashboard",
-  description: "Track projects and tasks with an interactive dashboard - USONet by NBTC",
-  keywords: "project tracker, task management, dashboard, USONet, NBTC",
+  description: "USO Net phase 2 visit plan by department - USONet by NBTC",
+  keywords: "USO, Wi-Fi, visit plan, NBTC, Chaiyaphum, Nakhon Ratchasima",
 };
 
 export default function RootLayout({

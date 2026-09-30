@@ -1,54 +1,38 @@
-export type ActiveTab = 'dashboard' | 'map' | 'upload';
+export type ActiveTab = 'dashboard' | 'points' | 'map';
 
-export interface AssetSubItem {
+/** One planned visit site from the visit_plan table (round x department x site) */
+export interface VisitSite {
   id: number;
-  assetId: string;
-  subAssetId: string;
-  oAssetId: string;
-  assetDesc: string;
-  refDoc: string;
-  locationText: string;
-  statusKey: string | null;
-  derivedStatus: string | null;
-}
-
-export interface UploadServicePoint {
-  ids: number[];
-  assetId: string;
-  oAssetId: string | null;
+  round: string;
+  department: string;
+  deptSeq: number | null;
+  serviceType: string | null;
   serviceName: string;
-  village: string | null;
-  district: string | null;
-  province: string;
-  uploadStatus: string | null;
-  uploadedAt: string | null;
-  inspectedAt: string | null;
-  pointCount: number;
-}
-
-export interface MapServicePoint {
-  id: number;
-  assetId: string | null;
-  oAssetId: string | null;
-  serviceName: string;
+  villageCode: string | null;
   village: string | null;
   subdistrict: string | null;
   district: string | null;
-  province: string;
-  provider: string;
-  latitude: number;
-  longitude: number;
-  zone: string | null;
+  province: string | null;
   installLocation: string | null;
-  contractNumber: string | null;
+  provider: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  project: string | null;
+  phone: string | null;
+  phoneSource: string | null;
   inspected: boolean;
+  inspectedAt: string | null;
 }
 
-export interface USOStats {
-  totalPoints: number;
-  byZone: Record<string, number>;
+export interface VisitStats {
+  total: number;
+  missingCoords: number;
+  schools: number;
+  schoolsWithPhone: number;
+  inspected: number;
+  byRound: Record<string, number>;
+  byDepartment: Record<string, number>;
   byServiceName: Record<string, number>;
   byDistrict: Record<string, number>;
-  byDistrictInspected: Record<string, number>;
   byProvider: Record<string, number>;
 }

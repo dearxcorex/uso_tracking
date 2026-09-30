@@ -1,14 +1,15 @@
 'use client';
 
+import { getProviderShort } from '@/lib/services';
+
 interface ProviderChartProps {
   byProvider: Record<string, number>;
   total: number;
 }
 
-const providerColorList: { match: (name: string) => boolean; short: string; style: { bg: string; text: string; hex: string } }[] = [
-  { match: (n) => n.includes('CAT'), short: 'NT (CAT)', style: { bg: 'bg-orange-500', text: 'text-orange-500 dark:text-orange-400', hex: '#f97316' } },
-  { match: (n) => n.includes('TOT'), short: 'NT (TOT)', style: { bg: 'bg-violet-500', text: 'text-violet-500 dark:text-violet-400', hex: '#8b5cf6' } },
-  { match: (n) => n.includes('ทรู') || n.includes('True'), short: 'True Move H', style: { bg: 'bg-rose-500', text: 'text-rose-500 dark:text-rose-400', hex: '#f43f5e' } },
+const providerColorList: { match: (name: string) => boolean; style: { bg: string; text: string; hex: string } }[] = [
+  { match: (n) => n.includes('CAT'), style: { bg: 'bg-orange-500', text: 'text-orange-500 dark:text-orange-400', hex: '#f97316' } },
+  { match: (n) => n.includes('TOT'), style: { bg: 'bg-blue-500', text: 'text-blue-500 dark:text-blue-400', hex: '#3b82f6' } },
 ];
 
 const defaultColor = { bg: 'bg-slate-500', text: 'text-slate-500 dark:text-slate-400', hex: '#64748b' };
@@ -17,7 +18,7 @@ function getProviderInfo(name: string) {
   const found = providerColorList.find((p) => p.match(name));
   return {
     color: found?.style ?? defaultColor,
-    shortName: found?.short ?? name,
+    shortName: getProviderShort(name),
   };
 }
 

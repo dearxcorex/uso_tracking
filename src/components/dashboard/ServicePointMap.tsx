@@ -5,76 +5,29 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapServicePoint } from '@/types';
-import { getProviderShort, providerColor, filterMapPoints, computeInspectionCounts } from '@/lib/map-utils';
-import type { MapFilters } from '@/lib/map-utils';
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
+import { VisitSite } from '@/types';
+import { EMPTY_FILTERS, filterPoints, formatLocation, getFilterOptions, googleMapsUrl, hasActiveFilters, hasCoords, siteTitle } from '@/lib/points';
+import type { PointFilters as Filters } from '@/lib/points';
+import { DEPARTMENT_STYLES, getDepartmentStyle, getProviderShort } from '@/lib/services';
+import DepartmentBadge from './DepartmentBadge';
+import InspectButton from './InspectButton';
+import { INSPECT_LABELS } from '@/lib/inspect';
+import PhoneLink from './PhoneLink';
+import PointFilters from './PointFilters';
+import ServiceBadge from './ServiceBadge';
 
-type FilterType = MapFilters['inspection'];
+type MappedPoint = VisitSite & { latitude: number; longitude: number };
 
-const defaultFilters: MapFilters = {
-  inspection: 'all',
-  zone: '',
-  serviceName: '',
-  district: '',
-  provider: '',
-};
+/* Pin Markers — color-coded by department; inspected sites show a check mark */
 
-/* Filter Select */
-
-function MapFilterSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="text-xs rounded-lg border border-border bg-card text-foreground px-2 py-1.5 max-w-[160px] truncate focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-colors"
-      >
-        <option value="">ทั้งหมด</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-/* Pin Markers — color-coded by service name */
-
-const SERVICE_PIN_COLORS: Record<string, { top: string; bot: string }> = {
-  'Wi-Fi โรงเรียน': { top: '#D946EF', bot: '#C026D3' },
-  'Mobile':         { top: '#10B981', bot: '#059669' },
-  'อาคาร USO Net':  { top: '#F59E0B', bot: '#D97706' },
-  'ห้อง USO Wrap':  { top: '#F43F5E', bot: '#E11D48' },
-  'Wi-Fi หมู่บ้าน':  { top: '#3B82F6', bot: '#2563EB' },
-  'Wi-Fi รพ.สต.':   { top: '#06B6D4', bot: '#0891B2' },
-};
-
-const DEFAULT_PIN_COLOR = { top: '#14B8A6', bot: '#0D9488' };
-
-function getServiceColor(serviceName: string) {
-  return SERVICE_PIN_COLORS[serviceName] || DEFAULT_PIN_COLOR;
-}
-
-function createServicePinIcon(serviceName: string, inspected: boolean): L.DivIcon {
-  const { top, bot } = getServiceColor(serviceName);
-  const id = `pin-${serviceName.replace(/\s+/g, '-')}-${inspected ? 'i' : 'n'}`;
-
-  // Inspected: filled circle with white checkmark. Not inspected: white empty dot.
-  const innerCircle = inspected
-    ? `<circle cx="14" cy="12" r="5" fill="${bot}"/>
-       <path d="M10.5 12 L13 14.5 L17.5 9.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+function createDepartmentPinIcon(department: string, inspected: boolean): L.DivIcon {
+  const { hex: top, hexDark: bot } = getDepartmentStyle(department);
+  const center = inspected
+    ? `<circle cx="14" cy="12" r="6.5" fill="#fff"/><path d="M10.8 12.2l2.2 2.2 4.2-4.6" fill="none" stroke="${bot}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`
     : `<circle cx="14" cy="12" r="4.5" fill="#fff" opacity="0.95"/>`;
+  const id = `pin-${top.slice(1)}`;
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
@@ -86,7 +39,7 @@ function createServicePinIcon(serviceName: string, inspected: boolean): L.DivIco
       </defs>
       <path d="M14 36 C14 36 3 20 3 12 A11 11 0 1 1 25 12 C25 20 14 36 14 36Z"
             fill="url(#${id})" stroke="${bot}" stroke-width="0.5" opacity="0.9"/>
-      ${innerCircle}
+      ${center}
     </svg>`;
 
   return L.divIcon({
@@ -98,26 +51,16 @@ function createServicePinIcon(serviceName: string, inspected: boolean): L.DivIco
   });
 }
 
-// Pre-cache pin icons for each service name × inspected combination
+// Pre-cache one pin icon per department x inspection status
 const pinIconCache: Record<string, L.DivIcon> = {};
 
-function getServicePin(serviceName: string, inspected: boolean): L.DivIcon {
-  const key = `${serviceName}:${inspected}`;
+function getDepartmentPin(department: string, inspected: boolean): L.DivIcon {
+  const key = `${department}-${inspected}`;
   if (!pinIconCache[key]) {
-    pinIconCache[key] = createServicePinIcon(serviceName, inspected);
+    pinIconCache[key] = createDepartmentPinIcon(department, inspected);
   }
   return pinIconCache[key];
 }
-
-/* Legend labels for service name colors */
-const SERVICE_LEGEND: { name: string; color: string }[] = [
-  { name: 'Wi-Fi โรงเรียน', color: '#D946EF' },
-  { name: 'Mobile', color: '#10B981' },
-  { name: 'อาคาร USO Net', color: '#F59E0B' },
-  { name: 'ห้อง USO Wrap', color: '#F43F5E' },
-  { name: 'Wi-Fi หมู่บ้าน', color: '#3B82F6' },
-  { name: 'Wi-Fi รพ.สต.', color: '#06B6D4' },
-];
 
 /* Location Control — auto-follow with watchPosition */
 
@@ -280,167 +223,74 @@ function LocationControl() {
   );
 }
 
-/* Fit Bounds */
+/* Fit Bounds — refits when the filtered set of sites changes (not on status edits) */
 
-function FitBounds({ points }: { points: MapServicePoint[] }) {
+function FitBounds({ points }: { points: MappedPoint[] }) {
   const map = useMap();
-  const hasFittedRef = useRef(false);
+  const pointsRef = useRef(points);
+  pointsRef.current = points;
+  const idKey = points.map((p) => p.id).join(',');
   useEffect(() => {
-    if (points.length === 0 || hasFittedRef.current) return;
-    hasFittedRef.current = true;
-    const bounds = L.latLngBounds(points.map((p) => [p.latitude, p.longitude]));
-    map.fitBounds(bounds, { padding: [30, 30] });
-  }, [map, points]);
+    const current = pointsRef.current;
+    if (current.length === 0) return;
+    const bounds = L.latLngBounds(current.map((p) => [p.latitude, p.longitude]));
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+  }, [map, idKey]);
   return null;
 }
 
-/* Badges */
+/* Popup Content */
 
-function ServiceNameBadge({ name }: { name: string }) {
-  const cls =
-    name === 'Wi-Fi หมู่บ้าน' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' :
-    name === 'Mobile' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-    name === 'Wi-Fi โรงเรียน' ? 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400' :
-    name === 'อาคาร USO Net' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-    name === 'ห้อง USO Wrap' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
-    'bg-teal-500/10 text-teal-600 dark:text-teal-400';
+type InspectedHandler = (id: number, inspected: boolean, inspectedAt: string | null) => void;
 
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
-      {name}
-    </span>
-  );
-}
-
-function ZoneBadge({ zone }: { zone: string }) {
-  const isPlus = zone.includes('C+');
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-      isPlus
-        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-    }`}>
-      {isPlus ? 'Zone C+' : 'Zone C'}
-    </span>
-  );
-}
-
-/* Popup Content — manages its own inspection state */
-
-function PopupContent({
-  point,
-  onToggle,
-}: {
-  point: MapServicePoint;
-  onToggle: (id: number) => Promise<boolean>;
-}) {
-  const [inspected, setInspected] = useState(point.inspected);
-  const [toggling, setToggling] = useState(false);
-
-  const handleClick = async () => {
-    setToggling(true);
-    try {
-      const newInspected = await onToggle(point.id);
-      setInspected(newInspected);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  // Condensed location: village / subdistrict / district
-  const locationParts = [point.village, point.subdistrict, point.district].filter(Boolean);
-  const locationLine = locationParts.join(' / ');
+function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; onSelect: (id: number) => void; onInspected: InspectedHandler }) {
+  const locationLine = formatLocation(point);
 
   return (
     <div className="min-w-[250px] max-w-[320px] max-h-[65vh] overflow-y-auto space-y-2.5">
-      {/* Header: badges */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <ServiceNameBadge name={point.serviceName} />
-        {point.zone && <ZoneBadge zone={point.zone} />}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <DepartmentBadge department={point.department} seq={point.deptSeq} />
+        <ServiceBadge name={point.serviceName} />
+        <span className="text-[11px] text-[var(--muted-foreground)]">{point.round}</span>
       </div>
 
-      {/* Status banner */}
-      <div className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-bold transition-colors ${
-        inspected
-          ? 'bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-500/30'
-          : 'bg-orange-500/20 text-orange-700 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/30'
-      }`}>
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${inspected ? 'bg-emerald-500' : 'bg-orange-500'}`} />
-        {inspected ? 'ตรวจแล้ว' : 'ยังไม่ตรวจ'}
-      </div>
-
-      {/* Detail fields */}
       <div className="text-[13px] space-y-1.5 text-[var(--card-foreground)]">
-        {point.assetId && (
-          <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">🏷 Asset ID:</span>
-            <span className="font-mono font-medium text-xs bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">{point.assetId}</span>
-          </div>
-        )}
-        {point.oAssetId && (
-          <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">🔖 O Asset ID:</span>
-            <span className="font-mono font-medium text-xs bg-[var(--muted)]/30 px-1.5 py-0.5 rounded">{point.oAssetId}</span>
-          </div>
-        )}
-        {point.installLocation && (
-          <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">📍 สถานที่:</span>
-            <span className="font-medium">{point.installLocation}</span>
-          </div>
-        )}
+        <div className="font-semibold">{siteTitle(point)}</div>
         {locationLine && (
           <div className="flex gap-2">
             <span className="text-[var(--muted-foreground)] shrink-0">🏘</span>
-            <span className="font-medium">{locationLine}</span>
+            <span>{locationLine}</span>
           </div>
         )}
-        <div className="flex gap-2">
-          <span className="text-[var(--muted-foreground)] shrink-0">🏢 ผู้ให้บริการ:</span>
-          <span className={`font-semibold ${providerColor(point.provider)}`}>{getProviderShort(point.provider)}</span>
-        </div>
+        {point.provider && (
+          <div className="flex gap-2">
+            <span className="text-[var(--muted-foreground)] shrink-0">🏢 ผู้ให้บริการ:</span>
+            <span className="font-medium">{getProviderShort(point.provider)}</span>
+          </div>
+        )}
+        {point.phone && (
+          <div className="flex gap-2">
+            <span className="text-[var(--muted-foreground)] shrink-0">📞</span>
+            <PhoneLink phone={point.phone} />
+          </div>
+        )}
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-1">
+      <InspectButton siteId={point.id} inspected={point.inspected} inspectedAt={point.inspectedAt} onChange={onInspected} />
+
+      <div className="flex gap-2">
         <button
-          onClick={handleClick}
-          disabled={toggling}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 rounded-xl text-sm font-semibold text-white transition-colors ${
-            inspected
-              ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700'
-              : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700'
-          } ${toggling ? 'opacity-50' : ''}`}
+          onClick={() => onSelect(point.id)}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 rounded-xl text-sm font-semibold bg-secondary text-foreground hover:bg-muted transition-colors"
           style={{ minHeight: '48px' }}
         >
-          {toggling ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          ) : inspected ? (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              ยกเลิกตรวจ
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              ตรวจแล้ว
-            </>
-          )}
+          รายละเอียด
         </button>
         <a
-          href={`https://www.google.com/maps/dir/?api=1&destination=${point.latitude},${point.longitude}`}
+          href={googleMapsUrl(point.latitude, point.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 px-4 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground transition-colors"
           style={{ minHeight: '48px' }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,16 +304,16 @@ function PopupContent({
   );
 }
 
-/* Memoized cluster layer — only re-renders when points or toggle function change */
+/* Memoized cluster layer — only re-renders when the filtered points change */
 
 const ClusterLayer = React.memo(function ClusterLayer({
   points,
-  onToggle,
-  markersRef,
+  onSelect,
+  onInspected,
 }: {
-  points: MapServicePoint[];
-  onToggle: (id: number) => Promise<boolean>;
-  markersRef: React.MutableRefObject<Record<number, L.Marker>>;
+  points: MappedPoint[];
+  onSelect: (id: number) => void;
+  onInspected: InspectedHandler;
 }) {
   return (
     <MarkerClusterGroup
@@ -476,11 +326,10 @@ const ClusterLayer = React.memo(function ClusterLayer({
         <Marker
           key={point.id}
           position={[point.latitude, point.longitude]}
-          icon={getServicePin(point.serviceName, point.inspected)}
-          ref={(el) => { if (el) markersRef.current[point.id] = el; }}
+          icon={getDepartmentPin(point.department, point.inspected)}
         >
           <Popup maxWidth={320} minWidth={260} autoPanPadding={L.point(20, 20)}>
-            <PopupContent point={point} onToggle={onToggle} />
+            <PopupContent point={point} onSelect={onSelect} onInspected={onInspected} />
           </Popup>
         </Marker>
       ))}
@@ -500,30 +349,22 @@ function MapLegend() {
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-sm text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <circle cx="12" cy="12" r="3" />
-            <path strokeLinecap="round" d="M12 2v3m0 14v3M2 12h3m14 0h3" />
-          </svg>
-          ประเภทบริการ
+          หน่วยงาน
           <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
         {open && (
-          <div className="mt-1 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-2 shadow-sm">
-            <div className="space-y-1">
-              {SERVICE_LEGEND.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-[11px] text-foreground whitespace-nowrap">{item.name}</span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-border mt-1.5 pt-1.5 flex items-center gap-1.5">
-              <svg className="w-2.5 h-2.5 text-emerald-600 shrink-0" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 5 L4.5 7.5 L8 3" />
-              </svg>
-              <span className="text-[10px] text-muted-foreground">= ตรวจแล้ว</span>
+          <div className="mt-1 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-2 shadow-sm space-y-1">
+            {Object.entries(DEPARTMENT_STYLES).map(([name, style]) => (
+              <div key={name} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: style.hex }} />
+                <span className="text-[11px] text-foreground whitespace-nowrap">{name}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5 pt-1 mt-1 border-t border-border">
+              <span className="w-2.5 text-center text-[11px] leading-none text-emerald-500 font-bold">✓</span>
+              <span className="text-[11px] text-foreground whitespace-nowrap">{INSPECT_LABELS.done}</span>
             </div>
           </div>
         )}
@@ -535,150 +376,52 @@ function MapLegend() {
 /* Main Map Component */
 
 interface ServicePointMapProps {
-  initialPoints: MapServicePoint[];
+  points: VisitSite[];
+  onSelect: (id: number) => void;
+  onInspected: InspectedHandler;
 }
 
-export default function ServicePointMap({ initialPoints }: ServicePointMapProps) {
-  // Data ref — mutable, does NOT trigger cluster re-render on toggle
-  const allPointsRef = useRef<MapServicePoint[]>(initialPoints);
-  const markersRef = useRef<Record<number, L.Marker>>({});
+export default function ServicePointMap({ points, onSelect, onInspected }: ServicePointMapProps) {
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const [filters, setFilters] = useState<MapFilters>(defaultFilters);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const mappable = useMemo(() => points.filter(hasCoords), [points]);
+  const options = useMemo(() => getFilterOptions(points), [points]);
+  const filteredPoints = useMemo(() => filterPoints(mappable, filters) as MappedPoint[], [mappable, filters]);
+  const hiddenCount = points.length - mappable.length;
 
-  // Separate counts state — re-renders filter pills only, not markers
-  const [counts, setCounts] = useState(() => computeInspectionCounts(initialPoints));
-
-  // Derive unique filter options from all points (computed once)
-  const filterOptions = useMemo(() => {
-    const pts = allPointsRef.current;
-    return {
-      zones: [...new Set(pts.map((p) => p.zone).filter(Boolean))].sort() as string[],
-      serviceNames: [...new Set(pts.map((p) => p.serviceName).filter(Boolean))].sort() as string[],
-      districts: [...new Set(pts.map((p) => p.district).filter(Boolean))].sort() as string[],
-      providers: [...new Set(pts.map((p) => p.provider).filter(Boolean))].sort() as string[],
-    };
-  }, []);
-
-  const updateFilter = useCallback(<K extends keyof MapFilters>(key: K, value: MapFilters[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
-
-  const clearAllFilters = useCallback(() => {
-    setFilters(defaultFilters);
-  }, []);
-
-  const hasAdvancedFilters = filters.zone !== '' || filters.serviceName !== '' || filters.district !== '' || filters.provider !== '';
-
-  const filteredPoints = useMemo(() => filterMapPoints(allPointsRef.current, filters), [filters]);
-
-  const handleToggle = useCallback(async (id: number): Promise<boolean> => {
-    const res = await fetch(`/api/service-points/${id}/inspect`, { method: 'PATCH' });
-    if (!res.ok) throw new Error('Toggle failed');
-    const updated = await res.json();
-
-    // Update data ref (no cluster re-render)
-    allPointsRef.current = allPointsRef.current.map((p) =>
-      p.id === id ? { ...p, inspected: updated.inspected } : p
-    );
-
-    // Update filter counts (re-renders pills only)
-    setCounts((prev) => ({
-      all: prev.all,
-      inspected: prev.inspected + (updated.inspected ? 1 : -1),
-      notInspected: prev.notInspected + (updated.inspected ? -1 : 1),
-    }));
-
-    // Update marker icon imperatively — no re-render, popup stays open
-    const marker = markersRef.current[id];
-    if (marker) {
-      const point = allPointsRef.current.find((p) => p.id === id);
-      if (point) marker.setIcon(getServicePin(point.serviceName, updated.inspected));
-    }
-
-    return updated.inspected;
-  }, []);
-
-  const inspectionButtons: { key: FilterType; label: string; count: number; activeClass: string }[] = [
-    {
-      key: 'all',
-      label: 'ทั้งหมด',
-      count: counts.all,
-      activeClass: 'bg-[var(--foreground)]/10 text-[var(--foreground)]',
-    },
-    {
-      key: 'inspected',
-      label: 'ตรวจแล้ว',
-      count: counts.inspected,
-      activeClass: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400',
-    },
-    {
-      key: 'not-inspected',
-      label: 'ยังไม่ตรวจ',
-      count: counts.notInspected,
-      activeClass: 'bg-orange-600/15 text-orange-700 dark:text-orange-400',
-    },
-  ];
+  const toggleFilters = useCallback(() => setShowFilters((v) => !v), []);
 
   return (
     <div className="flex flex-col animate-fade-in" style={{ height: 'calc(100dvh - 140px)', minHeight: '400px' }}>
       {/* Filter bar */}
       <div className="clay-card p-2 shrink-0">
-        {/* Row 1: Inspection pills + filter toggle */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex gap-0.5 bg-[var(--muted)]/20 rounded-md p-0.5 flex-1 min-w-0">
-            {inspectionButtons.map((btn) => (
-              <button
-                key={btn.key}
-                onClick={() => updateFilter('inspection', btn.key)}
-                className={`flex-1 inline-flex items-center justify-center gap-1 px-1.5 py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  filters.inspection === btn.key
-                    ? btn.activeClass
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {btn.label}
-                <span className="font-mono text-[10px] opacity-70">
-                  {btn.count}
-                </span>
-              </button>
-            ))}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0 px-1.5 text-xs text-muted-foreground">
+            แสดง <span className="font-mono text-foreground">{filteredPoints.length}</span> จุดบนแผนที่
+            {hiddenCount > 0 && <span className="text-amber-600 dark:text-amber-400"> · {hiddenCount} จุดไม่มีพิกัด</span>}
           </div>
-
-          {/* Filter toggle button */}
           <button
-            onClick={() => setShowAdvancedFilters((v) => !v)}
+            onClick={toggleFilters}
             className={`relative inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors shrink-0 ${
-              showAdvancedFilters
+              showFilters
                 ? 'bg-[var(--foreground)]/10 text-[var(--foreground)]'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
-            title="ตัวกรองขั้นสูง"
+            title="ตัวกรอง"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            {hasAdvancedFilters && (
+            {hasActiveFilters(filters) && (
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-violet-500 rounded-full border border-card" />
             )}
           </button>
         </div>
 
-        {/* Row 2: Advanced filters (collapsible) */}
-        <div className={`overflow-hidden transition-all duration-200 ${showAdvancedFilters ? 'max-h-40 opacity-100 mt-2.5' : 'max-h-0 opacity-0'}`}>
-          <div className="flex flex-wrap items-end gap-3 pt-2 border-t border-border">
-            <MapFilterSelect label="โซน" value={filters.zone} options={filterOptions.zones} onChange={(v) => updateFilter('zone', v)} />
-            <MapFilterSelect label="บริการ" value={filters.serviceName} options={filterOptions.serviceNames} onChange={(v) => updateFilter('serviceName', v)} />
-            <MapFilterSelect label="อำเภอ" value={filters.district} options={filterOptions.districts} onChange={(v) => updateFilter('district', v)} />
-            <MapFilterSelect label="ผู้ให้บริการ" value={filters.provider} options={filterOptions.providers} onChange={(v) => updateFilter('provider', v)} />
-            {hasAdvancedFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-lg hover:bg-secondary"
-              >
-                ล้างตัวกรอง
-              </button>
-            )}
+        <div className={`overflow-hidden transition-all duration-200 ${showFilters ? 'max-h-64 opacity-100 mt-2.5' : 'max-h-0 opacity-0'}`}>
+          <div className="pt-2 border-t border-border">
+            <PointFilters filters={filters} options={options} onChange={setFilters} />
           </div>
         </div>
       </div>
@@ -696,9 +439,8 @@ export default function ServicePointMap({ initialPoints }: ServicePointMapProps)
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitBounds points={filteredPoints} />
-          <ClusterLayer points={filteredPoints} onToggle={handleToggle} markersRef={markersRef} />
+          <ClusterLayer points={filteredPoints} onSelect={onSelect} onInspected={onInspected} />
           <LocationControl />
-          {/* Legend — collapsible, hidden by default */}
           <MapLegend />
         </MapContainer>
       </div>

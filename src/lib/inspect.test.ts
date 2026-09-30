@@ -1,52 +1,29 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { computeInspectToggle, parseServicePointId } from './inspect';
+import { describe, it, expect } from 'vitest';
+import { inspectUpdate, parseInspectBody, parseSiteId } from './inspect';
 
-describe('parseServicePointId', () => {
-  it('should parse valid integer string', () => {
-    expect(parseServicePointId('123')).toBe(123);
-  });
-
-  it('should parse "0" as valid', () => {
-    expect(parseServicePointId('0')).toBe(0);
-  });
-
-  it('should return null for non-numeric string', () => {
-    expect(parseServicePointId('abc')).toBeNull();
-  });
-
-  it('should return null for empty string', () => {
-    expect(parseServicePointId('')).toBeNull();
-  });
-
-  it('should parse string with leading number', () => {
-    // parseInt('123abc') returns 123 — this is expected JS behavior
-    expect(parseServicePointId('123abc')).toBe(123);
+describe('parseSiteId', () => {
+  it('accepts positive integers only', () => {
+    expect(parseSiteId('42')).toBe(42);
+    expect(parseSiteId('4x')).toBeNull();
+    expect(parseSiteId('-1')).toBeNull();
+    expect(parseSiteId('')).toBeNull();
   });
 });
 
-describe('computeInspectToggle', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-03-07T12:00:00Z'));
+describe('parseInspectBody', () => {
+  it('requires a boolean inspected field', () => {
+    expect(parseInspectBody({ inspected: true })).toBe(true);
+    expect(parseInspectBody({ inspected: false })).toBe(false);
+    expect(parseInspectBody({ inspected: 'true' })).toBeNull();
+    expect(parseInspectBody({})).toBeNull();
+    expect(parseInspectBody(null)).toBeNull();
   });
+});
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('should toggle false -> true with timestamp and pending status', () => {
-    const result = computeInspectToggle(false);
-
-    expect(result.inspected).toBe(true);
-    expect(result.inspected_at).toEqual(new Date('2026-03-07T12:00:00Z'));
-    expect(result.upload_status).toBe('pending');
-  });
-
-  it('should toggle true -> false with null timestamp and null status', () => {
-    const result = computeInspectToggle(true);
-
-    expect(result.inspected).toBe(false);
-    expect(result.inspected_at).toBeNull();
-    expect(result.upload_status).toBeNull();
+describe('inspectUpdate', () => {
+  it('stamps the time when inspected and clears it when undone', () => {
+    const now = new Date('2026-09-30T08:00:00Z');
+    expect(inspectUpdate(true, now)).toEqual({ inspected: true, inspected_at: now });
+    expect(inspectUpdate(false, now)).toEqual({ inspected: false, inspected_at: null });
   });
 });

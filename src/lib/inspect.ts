@@ -1,19 +1,18 @@
-/** Compute the fields to update when toggling inspection status */
-export function computeInspectToggle(currentInspected: boolean): {
-  inspected: boolean;
-  inspected_at: Date | null;
-  upload_status: string | null;
-} {
-  const newInspected = !currentInspected;
-  return {
-    inspected: newInspected,
-    inspected_at: newInspected ? new Date() : null,
-    upload_status: newInspected ? 'pending' : null,
-  };
+/** Validate and parse a visit_plan ID from a route param */
+export function parseSiteId(id: string): number | null {
+  return /^\d+$/.test(id) ? Number(id) : null;
 }
 
-/** Validate and parse a service point ID from string */
-export function parseServicePointId(id: string): number | null {
-  const parsed = parseInt(id, 10);
-  return isNaN(parsed) ? null : parsed;
+/** Read `{ inspected: boolean }` from a request body; null when invalid */
+export function parseInspectBody(body: unknown): boolean | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const { inspected } = body as { inspected?: unknown };
+  return typeof inspected === 'boolean' ? inspected : null;
 }
+
+/** Fields to write when setting inspection status */
+export function inspectUpdate(inspected: boolean, now = new Date()) {
+  return { inspected, inspected_at: inspected ? now : null };
+}
+
+export const INSPECT_LABELS = { done: 'ตรวจแล้ว', pending: 'ยังไม่ตรวจ' } as const;

@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { ActiveTab } from '@/types';
+import { navItems } from '../navItems';
 
 interface MobileNavProps {
   activeTab: ActiveTab;
@@ -9,36 +10,6 @@ interface MobileNavProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const tabs: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'map',
-    label: 'แผนที่',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-      </svg>
-    ),
-  },
-  {
-    id: 'upload',
-    label: 'อัปโหลดรูป',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-  },
-];
 
 export default function MobileNav({ activeTab, onTabChange, isOpen, onClose }: MobileNavProps) {
   // Close on Escape key
@@ -100,7 +71,7 @@ export default function MobileNav({ activeTab, onTabChange, isOpen, onClose }: M
 
         {/* Nav Items */}
         <div className="flex-1 py-3 px-3 space-y-1">
-          {tabs.map((tab) => {
+          {navItems.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
@@ -125,7 +96,7 @@ export default function MobileNav({ activeTab, onTabChange, isOpen, onClose }: M
         {/* Footer */}
         <div className="p-4 border-t border-border">
           <p className="text-[11px] text-muted-foreground text-center">
-            USO Service Points — Chaiyaphum
+            USO Net Phase 2 — Visit Plan
           </p>
         </div>
       </nav>
