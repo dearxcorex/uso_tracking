@@ -5,6 +5,7 @@ import { VisitSite } from '@/types';
 import { EMPTY_FILTERS, filterPoints, formatLocation, getFilterOptions, hasCoords, siteTitle } from '@/lib/points';
 import type { PointFilters as Filters } from '@/lib/points';
 import DepartmentBadge from './DepartmentBadge';
+import MobileFilterBar from './MobileFilterBar';
 import PhoneLink from './PhoneLink';
 import PointFilters from './PointFilters';
 import ServiceBadge from './ServiceBadge';
@@ -41,8 +42,15 @@ export default function PointList({ points, onSelect }: PointListProps) {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="clay-card p-3 lg:p-4">
+    <div className="space-y-3 lg:space-y-4 animate-fade-in">
+      <MobileFilterBar
+        className="lg:hidden"
+        filters={filters}
+        options={options}
+        onChange={handleFiltersChange}
+        resultCount={filtered.length}
+      />
+      <div className="clay-card p-4 hidden lg:block">
         <PointFilters filters={filters} options={options} onChange={handleFiltersChange} />
       </div>
 

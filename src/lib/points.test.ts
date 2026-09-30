@@ -3,6 +3,7 @@ import {
   EMPTY_FILTERS,
   compareSites,
   computeStats,
+  countActiveFilters,
   filterPoints,
   formatLocation,
   getFilterOptions,
@@ -143,6 +144,11 @@ describe('computeStats byDepartmentService', () => {
 });
 
 describe('helpers', () => {
+  it('countActiveFilters ignores search', () => {
+    expect(countActiveFilters({ ...EMPTY_FILTERS, search: 'x' })).toBe(0);
+    expect(countActiveFilters({ ...EMPTY_FILTERS, round: 'ค.9', district: 'จัตุรัส' })).toBe(2);
+  });
+
   it('hasActiveFilters detects any non-empty field', () => {
     expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, round: 'ค.9' })).toBe(true);

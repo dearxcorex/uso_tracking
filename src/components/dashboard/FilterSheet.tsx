@@ -1,0 +1,153 @@
+'use client';
+
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { EMPTY_FILTERS, hasActiveFilters } from '@/lib/points';
+import type { PointFilters as Filters } from '@/lib/points';
+import { getDepartmentStyle, getServiceStyle } from '@/lib/services';
+
+export interface FilterOptions {
+  rounds: string[];
+  departments: string[];
+  serviceNames: string[];
+  districts: string[];
+}
+
+function ChipGroup({
+  label,
+  value,
+  options,
+  onChange,
+  activeClass = () => 'bg-primary text-primary-foreground border-primary',
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  activeClass?: (opt: string) => string;
+}) {
+  const chip = (opt: string, text: string) => {
+    const active = value === opt;
+    return (
+      <button
+        key={opt || 'all'}
+        type="button"
+        onClick={() => onChange(opt)}
+        aria-pressed={active}
+        className={`min-h-10 px-3.5 rounded-full border text-sm font-medium whitespace-nowrap transition-colors ${
+          active ? activeClass(opt) : 'bg-card border-border text-muted-foreground active:bg-secondary'
+        }`}
+      >
+        {text}
+      </button>
+    );
+  };
+
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-medium text-muted-foreground mb-2">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {chip('', 'ทั้งหมด')}
+        {options.map((opt) => chip(opt, opt))}
+      </div>
+    </fieldset>
+  );
+}
+
+interface FilterSheetProps {
+  open: boolean;
+  onClose: () => void;
+  filters: Filters;
+  options: FilterOptions;
+  onChange: (filters: Filters) => void;
+  resultCount: number;
+}
+
+/** Mobile bottom sheet: tap-friendly chips instead of native selects */
+export default function FilterSheet({ open, onClose, filters, options, onChange, resultCount }: FilterSheetProps) {
+  const update = <K extends keyof Filters>(key: K, value: Filters[K]) => onChange({ ...filters, [key]: value });
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  // Selected department/service chips take the same color as their badges and map pins
+  const departmentClass = (dept: string) =>
+    dept ? `${getDepartmentStyle(dept).bar} text-white border-transparent` : 'bg-primary text-primary-foreground border-primary';
+  const serviceClass = (name: string) =>
+    name ? `${getServiceStyle(name).bar} text-white border-transparent` : 'bg-primary text-primary-foreground border-primary';
+
+  // Portal to <body>: when opened from the map overlay, Leaflet's controls would otherwise stack above the sheet
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-end lg:hidden">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="ตัวกรอง"
+        className="relative w-full max-h-[85dvh] flex flex-col bg-background border-t border-border rounded-t-2xl shadow-xl animate-sheet-up"
+      >
+        <div className="flex justify-center pt-2.5">
+          <span className="w-10 h-1 rounded-full bg-border" />
+        </div>
+        <div className="flex items-center justify-between px-4 pt-2 pb-3">
+          <h2 className="text-base font-semibold text-foreground">ตัวกรอง</h2>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            aria-label="ปิด"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
+          <ChipGroup label="หน่วยงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} activeClass={departmentClass} />
+          <ChipGroup label="ครั้ง" value={filters.round} options={options.rounds} onChange={(v) => update('round', v)} />
+          <ChipGroup label="บริการ" value={filters.serviceName} options={options.serviceNames} onChange={(v) => update('serviceName', v)} activeClass={serviceClass} />
+          <div className="space-y-2">
+            <label htmlFor="filter-district" className="block text-xs font-medium text-muted-foreground">อำเภอ</label>
+            <select
+              id="filter-district"
+              value={filters.district}
+              onChange={(e) => update('district', e.target.value)}
+              className="w-full min-h-11 rounded-xl border border-border bg-card text-foreground text-base px-3 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30"
+            >
+              <option value="">ทั้งหมด</option>
+              {options.districts.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-border pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            onClick={() => onChange({ ...EMPTY_FILTERS, search: filters.search })}
+            disabled={!hasActiveFilters({ ...filters, search: '' })}
+            className="min-h-12 px-4 rounded-xl text-sm font-medium text-muted-foreground bg-secondary disabled:opacity-40 transition-colors"
+          >
+            ล้าง
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 min-h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/80 transition-colors"
+          >
+            ดูผลลัพธ์ {resultCount.toLocaleString()} จุด
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

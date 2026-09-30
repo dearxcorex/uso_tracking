@@ -53,7 +53,7 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
   const subtitle = navItems.find((item) => item.id === activeTab)?.subtitle;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <NavSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -63,7 +63,13 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
           onMenuToggle={toggleMobileMenu}
         />
 
-        <div className="flex-1 overflow-y-auto scrollbar-stable p-4 lg:p-6 pb-20 lg:pb-6 space-y-4 lg:space-y-6">
+        <div
+          className={
+            activeTab === 'map'
+              ? 'flex-1 flex flex-col min-h-0 p-2 lg:p-6'
+              : 'flex-1 overflow-y-auto scrollbar-stable p-4 lg:p-6 pb-20 lg:pb-6 space-y-4 lg:space-y-6'
+          }
+        >
           {activeTab === 'dashboard' && (
             <>
               <StatsCards stats={stats} />

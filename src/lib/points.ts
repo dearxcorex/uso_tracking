@@ -21,6 +21,11 @@ export function hasActiveFilters(filters: PointFilters): boolean {
   return Object.values(filters).some((v) => v !== '');
 }
 
+/** Number of dropdown/chip filters set (search excluded) — for the filter button badge */
+export function countActiveFilters(filters: PointFilters): number {
+  return [filters.round, filters.department, filters.serviceName, filters.district].filter(Boolean).length;
+}
+
 /** Thai-aware sort that also orders embedded numbers naturally ('ค.9' before 'ค.10') */
 function compareText(a: string, b: string): number {
   return a.localeCompare(b, 'th', { numeric: true });

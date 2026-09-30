@@ -13,6 +13,7 @@ import type { PointFilters as Filters } from '@/lib/points';
 import { DEPARTMENT_STYLES, getDepartmentStyle, getProviderShort } from '@/lib/services';
 import DepartmentBadge from './DepartmentBadge';
 import InspectButton from './InspectButton';
+import MobileFilterBar from './MobileFilterBar';
 import { INSPECT_LABELS } from '@/lib/inspect';
 import PhoneLink from './PhoneLink';
 import PointFilters from './PointFilters';
@@ -394,9 +395,9 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
   const toggleFilters = useCallback(() => setShowFilters((v) => !v), []);
 
   return (
-    <div className="flex flex-col animate-fade-in" style={{ height: 'calc(100dvh - 140px)', minHeight: '400px' }}>
-      {/* Filter bar */}
-      <div className="clay-card p-2 shrink-0">
+    <div className="flex flex-col h-full min-h-0 animate-fade-in">
+      {/* Desktop filter bar */}
+      <div className="clay-card p-2 shrink-0 mb-2.5 hidden lg:block">
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0 px-1.5 text-xs text-muted-foreground">
             แสดง <span className="font-mono text-foreground">{filteredPoints.length}</span> จุดบนแผนที่
@@ -428,7 +429,22 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
       </div>
 
       {/* Map */}
-      <div className="clay-card overflow-hidden mt-2.5 flex-1">
+      <div className="clay-card overflow-hidden flex-1 min-h-0 relative">
+        {/* Mobile: filters float over the map so it keeps the full screen */}
+        <div className="lg:hidden absolute top-2 inset-x-2 z-[1000] space-y-1.5">
+          <MobileFilterBar
+            filters={filters}
+            options={options}
+            onChange={setFilters}
+            resultCount={filteredPoints.length}
+            floating
+          />
+          <div className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-sm text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{filteredPoints.length}</span> จุด
+            {hiddenCount > 0 && <span className="text-amber-600 dark:text-amber-400">· {hiddenCount} ไม่มีพิกัด</span>}
+          </div>
+        </div>
+
         <MapContainer
           center={[15.8, 102.0]}
           zoom={10}
