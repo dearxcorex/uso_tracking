@@ -1,4 +1,4 @@
-export type ActiveTab = 'dashboard' | 'points' | 'map';
+export type ActiveTab = 'dashboard' | 'map';
 
 /** One planned visit site from the visit_plan table (round x department x site) */
 export interface VisitSite {
@@ -23,6 +23,9 @@ export interface VisitSite {
   inspected: boolean;
   inspectedAt: string | null;
 }
+
+/** A site's inspection status — the PATCH /api/sites/[id]/inspect response */
+export type InspectionUpdate = Pick<VisitSite, 'id' | 'inspected' | 'inspectedAt'>;
 
 export interface VisitStats {
   total: number;

@@ -66,9 +66,11 @@ def main():
         )
         cur.execute("TRUNCATE visit_plan RESTART IDENTITY")
         execute_values(cur, f"INSERT INTO visit_plan ({', '.join(COLUMNS)}) VALUES %s", rows)
+        # IS NOT DISTINCT FROM so a blank village_code still matches (NULL = NULL is never true)
         cur.execute(
             "UPDATE visit_plan v SET inspected = true, inspected_at = k.inspected_at FROM kept_status k "
-            "WHERE (v.round, v.department, v.service_name, v.village_code) = (k.round, k.department, k.service_name, k.village_code)"
+            "WHERE (v.round, v.department, v.service_name, v.village_code) IS NOT DISTINCT FROM "
+            "(k.round, k.department, k.service_name, k.village_code)"
         )
         kept = cur.rowcount
         cur.execute("SELECT round, department, count(*), count(phone) FROM visit_plan GROUP BY 1, 2 ORDER BY 1, 2")

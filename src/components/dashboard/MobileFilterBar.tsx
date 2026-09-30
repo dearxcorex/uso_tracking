@@ -1,11 +1,9 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { countActiveFilters } from '@/lib/points';
-import type { PointFilters as Filters } from '@/lib/points';
-import FilterSheet, { type FilterOptions } from './FilterSheet';
-
-const CHIP_KEYS = ['department', 'round', 'serviceName', 'district'] as const;
+import { FILTER_KEYS, countActiveFilters, filterLabel } from '@/lib/points';
+import type { FilterOptions, PointFilters as Filters } from '@/lib/points';
+import FilterSheet from './FilterSheet';
 
 interface MobileFilterBarProps {
   filters: Filters;
@@ -28,12 +26,13 @@ export default function MobileFilterBar({ filters, options, onChange, resultCoun
     <div className={`space-y-2 ${className}`}>
       <div className="flex gap-2">
         <div className="relative flex-1 min-w-0">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute z-10 left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
           </svg>
           {/* text-base (16px) stops iOS Safari zooming in on focus */}
           <input
             type="search"
+            aria-label="ค้นหา"
             placeholder="ค้นหาโรงเรียน, หมู่บ้าน, ตำบล..."
             value={filters.search}
             onChange={(e) => onChange({ ...filters, search: e.target.value })}
@@ -59,14 +58,14 @@ export default function MobileFilterBar({ filters, options, onChange, resultCoun
 
       {activeCount > 0 && (
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-0.5 px-0.5">
-          {CHIP_KEYS.filter((key) => filters[key]).map((key) => (
+          {FILTER_KEYS.filter((key) => filters[key]).map((key) => (
             <button
               key={key}
               onClick={() => onChange({ ...filters, [key]: '' })}
               className={`shrink-0 h-8 pl-3 pr-2 flex items-center gap-1 rounded-full bg-card border ${surface} border-border text-xs text-foreground`}
-              aria-label={`ล้าง ${filters[key]}`}
+              aria-label={`ล้าง ${filterLabel(key, filters[key])}`}
             >
-              {filters[key]}
+              {filterLabel(key, filters[key])}
               <svg className="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>

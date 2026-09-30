@@ -7,7 +7,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
-import { VisitSite } from '@/types';
+import { InspectionUpdate, VisitSite } from '@/types';
 import { EMPTY_FILTERS, filterPoints, formatLocation, getFilterOptions, googleMapsUrl, hasActiveFilters, hasCoords, siteTitle } from '@/lib/points';
 import type { PointFilters as Filters } from '@/lib/points';
 import { DEPARTMENT_STYLES, getDepartmentStyle, getProviderShort } from '@/lib/services';
@@ -21,13 +21,14 @@ import ServiceBadge from './ServiceBadge';
 
 type MappedPoint = VisitSite & { latitude: number; longitude: number };
 
-/* Pin Markers — color-coded by department; inspected sites show a check mark */
+/* Pin Markers — color-coded by department and marked with its first letter (so color isn't the only cue);
+   inspected sites show a check mark instead */
 
 function createDepartmentPinIcon(department: string, inspected: boolean): L.DivIcon {
   const { hex: top, hexDark: bot } = getDepartmentStyle(department);
   const center = inspected
     ? `<circle cx="14" cy="12" r="6.5" fill="#fff"/><path d="M10.8 12.2l2.2 2.2 4.2-4.6" fill="none" stroke="${bot}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<circle cx="14" cy="12" r="4.5" fill="#fff" opacity="0.95"/>`;
+    : `<circle cx="14" cy="12" r="6.5" fill="#fff" opacity="0.95"/><text x="14" y="15.5" text-anchor="middle" font-size="10" font-weight="700" fill="${bot}">${department.charAt(0)}</text>`;
   const id = `pin-${top.slice(1)}`;
 
   const svg = `
@@ -65,9 +66,22 @@ function getDepartmentPin(department: string, inspected: boolean): L.DivIcon {
 
 /* Location Control — auto-follow with watchPosition */
 
+// Keyed by GeolocationPositionError.code; 0 = browser has no geolocation API
+const LOCATION_ERRORS: Record<number, string> = {
+  0: 'เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง',
+  1: 'ไม่ได้รับสิทธิ์เข้าถึงตำแหน่ง — อนุญาตในการตั้งค่าเบราว์เซอร์ แล้วแตะปุ่มเพื่อลองใหม่',
+  2: 'หาตำแหน่งไม่ได้ — ตรวจว่าเปิด Location Services ของเครื่องแล้ว แล้วแตะปุ่มเพื่อลองใหม่',
+  3: 'หาตำแหน่งไม่ทันเวลา — แตะปุ่มเพื่อลองใหม่',
+};
+
+// High accuracy first (GPS on phones); computers without GPS often time out on it, so fall back to Wi-Fi/IP location
+const HIGH_ACCURACY: PositionOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+const LOW_ACCURACY: PositionOptions = { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 };
+
 function LocationControl() {
   const map = useMap();
   const [status, setStatus] = useState<'loading' | 'following' | 'active' | 'error'>('loading');
+  const [errorCode, setErrorCode] = useState(0);
   const statusRef = useRef(status);
   statusRef.current = status;
   const markerRef = useRef<L.Marker | null>(null);
@@ -116,22 +130,32 @@ function LocationControl() {
     }
   }, [map]);
 
-  // Auto-start watchPosition on mount
-  useEffect(() => {
+  const startWatch = useCallback(function startWatch(highAccuracy: boolean) {
     if (!navigator.geolocation) {
+      setErrorCode(0);
       setStatus('error');
       return;
     }
-
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
     watchIdRef.current = navigator.geolocation.watchPosition(
       updatePosition,
       (err) => {
         // Expected when permission is denied or no fix is available; warn so the dev overlay stays quiet
-        console.warn(`Geolocation unavailable (code ${err.code}): ${err.message}`);
+        console.warn(`Geolocation unavailable (code ${err.code}, high accuracy ${highAccuracy}): ${err.message}`);
+        if (highAccuracy && err.code !== err.PERMISSION_DENIED) {
+          startWatch(false);
+          return;
+        }
+        setErrorCode(err.code);
         setStatus('error');
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      highAccuracy ? HIGH_ACCURACY : LOW_ACCURACY
     );
+  }, [updatePosition]);
+
+  // Auto-start watchPosition on mount
+  useEffect(() => {
+    startWatch(true);
 
     return () => {
       if (watchIdRef.current !== null) {
@@ -157,14 +181,7 @@ function LocationControl() {
       // Retry
       firstFixRef.current = true;
       setStatus('loading');
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        updatePosition,
-        () => setStatus('error'),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-      );
+      startWatch(true);
       return;
     }
 
@@ -179,21 +196,28 @@ function LocationControl() {
       // Stop following (just show dot)
       setStatus('active');
     }
-  }, [map, status, updatePosition]);
+  }, [map, status, startWatch]);
 
   // Icon based on state
   const isFollowing = status === 'following';
+  const label = status === 'error' ? 'ระบุตำแหน่งไม่ได้ — แตะเพื่อลองใหม่' : isFollowing ? 'หยุดติดตาม' : 'ติดตามตำแหน่งของฉัน';
 
   return (
     <div
       className="leaflet-bottom leaflet-right"
       style={{ pointerEvents: 'none', marginBottom: '20px', marginRight: '10px' }}
     >
-      <div className="leaflet-control" style={{ pointerEvents: 'auto' }}>
+      <div className="leaflet-control flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
+        {status === 'error' && (
+          <div role="status" className="max-w-[200px] px-2.5 py-1.5 rounded-lg bg-card/95 border border-red-400/40 shadow-sm text-xs text-foreground">
+            {LOCATION_ERRORS[errorCode] ?? LOCATION_ERRORS[2]}
+          </div>
+        )}
         <button
           onClick={handleClick}
-          title={isFollowing ? 'หยุดติดตาม' : 'ติดตามตำแหน่งของฉัน'}
-          className={`flex items-center justify-center w-10 h-10 rounded-lg border shadow-sm transition-colors ${
+          aria-label={label}
+          title={label}
+          className={`flex items-center justify-center rounded-lg border shadow-sm transition-colors ${
             isFollowing
               ? 'bg-primary text-primary-foreground border-primary'
               : status === 'active'
@@ -201,7 +225,7 @@ function LocationControl() {
               : status === 'error'
               ? 'bg-card border-red-400/40 text-red-500'
               : 'bg-card border-border text-muted-foreground'
-          }`}
+          } shrink-0 w-11 h-11`}
         >
           {status === 'loading' ? (
             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -243,7 +267,7 @@ function FitBounds({ points }: { points: MappedPoint[] }) {
 
 /* Popup Content */
 
-type InspectedHandler = (id: number, inspected: boolean, inspectedAt: string | null) => void;
+type InspectedHandler = (update: InspectionUpdate) => void;
 
 function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; onSelect: (id: number) => void; onInspected: InspectedHandler }) {
   const locationLine = formatLocation(point);
@@ -271,14 +295,11 @@ function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; on
           </div>
         )}
         {point.phone && (
-          <div className="flex gap-2">
-            <span className="text-[var(--muted-foreground)] shrink-0">📞</span>
-            <PhoneLink phone={point.phone} />
-          </div>
+          <PhoneLink phone={point.phone} />
         )}
       </div>
 
-      <InspectButton siteId={point.id} inspected={point.inspected} inspectedAt={point.inspectedAt} onChange={onInspected} />
+      <InspectButton site={point} onChange={onInspected} />
 
       <div className="flex gap-2">
         <button
@@ -292,7 +313,7 @@ function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; on
           href={googleMapsUrl(point.latitude, point.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground! transition-colors"
           style={{ minHeight: '48px' }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,6 +328,9 @@ function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; on
 }
 
 /* Memoized cluster layer — only re-renders when the filtered points change */
+
+// On phones the search/filter bar floats over the top of the map; pan popups clear of it
+const POPUP_PAD_TOP_LEFT = typeof window !== 'undefined' && window.innerWidth < 1024 ? L.point(20, 160) : L.point(20, 20);
 
 const ClusterLayer = React.memo(function ClusterLayer({
   points,
@@ -329,8 +353,9 @@ const ClusterLayer = React.memo(function ClusterLayer({
           key={point.id}
           position={[point.latitude, point.longitude]}
           icon={getDepartmentPin(point.department, point.inspected)}
+          title={`${point.department} ${siteTitle(point)}`}
         >
-          <Popup maxWidth={320} minWidth={260} autoPanPadding={L.point(20, 20)}>
+          <Popup maxWidth={320} minWidth={260} autoPanPaddingTopLeft={POPUP_PAD_TOP_LEFT} autoPanPaddingBottomRight={L.point(20, 20)}>
             <PopupContent point={point} onSelect={onSelect} onInspected={onInspected} />
           </Popup>
         </Marker>
@@ -349,6 +374,7 @@ function MapLegend() {
       <div className="leaflet-control" style={{ pointerEvents: 'auto' }}>
         <button
           onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
           className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-sm text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
         >
           หน่วยงาน
@@ -401,10 +427,12 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0 px-1.5 text-xs text-muted-foreground">
             แสดง <span className="font-mono text-foreground">{filteredPoints.length}</span> จุดบนแผนที่
-            {hiddenCount > 0 && <span className="text-amber-600 dark:text-amber-400"> · {hiddenCount} จุดไม่มีพิกัด</span>}
+            {hiddenCount > 0 && <span className="text-amber-700 dark:text-amber-400"> · {hiddenCount} จุดไม่มีพิกัด</span>}
           </div>
           <button
             onClick={toggleFilters}
+            aria-label="ตัวกรอง"
+            aria-expanded={showFilters}
             className={`relative inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors shrink-0 ${
               showFilters
                 ? 'bg-[var(--foreground)]/10 text-[var(--foreground)]'
@@ -441,7 +469,7 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
           />
           <div className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-sm text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{filteredPoints.length}</span> จุด
-            {hiddenCount > 0 && <span className="text-amber-600 dark:text-amber-400">· {hiddenCount} ไม่มีพิกัด</span>}
+            {hiddenCount > 0 && <span className="text-amber-700 dark:text-amber-400">· {hiddenCount} ไม่มีพิกัด</span>}
           </div>
         </div>
 
@@ -460,6 +488,20 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
           <LocationControl />
           <MapLegend />
         </MapContainer>
+
+        {filteredPoints.length === 0 && mappable.length > 0 && (
+          <div className="absolute inset-0 z-[999] flex items-center justify-center pointer-events-none p-4">
+            <div role="status" className="pointer-events-auto clay-card px-5 py-4 text-center space-y-3 max-w-xs">
+              <p className="text-sm font-medium text-foreground">ไม่พบจุดที่ตรงกับตัวกรอง</p>
+              <button
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="min-h-11 px-4 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                ล้างตัวกรอง
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

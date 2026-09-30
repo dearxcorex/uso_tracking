@@ -33,10 +33,10 @@ Two steps, review in between:
 
 ## Architecture Overview
 
-USONet is a read-only viewer for the NBTC USO Net phase 2 visit plan (Wi-Fi หมู่บ้าน / Wi-Fi โรงเรียน sites in Chaiyaphum and Nakhon Ratchasima, split by department อภ./ตภ./บภ./ผภ. and round ค.9/ค.10), built with **Next.js 15**, **TypeScript**, **React 19**, **Tailwind CSS 4**, **Prisma ORM**, and **react-leaflet**.
+USONet is a viewer (plus an inspection checklist) for the NBTC USO Net phase 2 visit plan (Wi-Fi หมู่บ้าน / Wi-Fi โรงเรียน sites in Chaiyaphum and Nakhon Ratchasima, split by department อภ./ตภ./บภ./ผภ. and round ค.9/ค.10), built with **Next.js 15**, **TypeScript**, **React 19**, **Tailwind CSS 4**, **Prisma ORM**, and **react-leaflet**.
 
 ### Routing & Data Flow
-Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan` rows (~80) via `src/lib/queries.ts` and passes them to `Dashboard.tsx`, which derives stats with `computeStats`. Navigation is **client-side tab switching** (`activeTab`): `dashboard`, `points`, `map`. Filtering happens client-side. Site detail is a slide-over panel rendered from the already-loaded row. The only write is inspection status: the map popup's ยังไม่ตรวจ/ตรวจแล้ว button calls `PATCH /api/sites/[id]/inspect` with `{ inspected: boolean }`, and `Dashboard` updates its in-memory list.
+Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan` rows (~80) via `src/lib/queries.ts` and passes them to `Dashboard.tsx`, which derives stats with `computeStats`. Navigation is **client-side tab switching** (`activeTab`): `dashboard`, `map`. Filtering happens client-side. Site detail is a slide-over panel rendered from the already-loaded row. The only write is inspection status: the map popup's ยังไม่ตรวจ/ตรวจแล้ว button calls `PATCH /api/sites/[id]/inspect` with `{ inspected: boolean }`, and `Dashboard` updates its in-memory list.
 
 ### Path Alias
 `@/*` maps to `./src/*`.
@@ -45,18 +45,18 @@ Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan`
 - **`Dashboard.tsx`** — Tab orchestrator; owns `activeTab` and `selectedPointId` (opens `PointDetail`)
 - **`navItems.tsx`** — Tab labels/subtitles/icons shared by `NavSidebar.tsx` (desktop, expand-on-hover) and `client/MobileNav.tsx` (slide-in drawer)
 - **`client/AppHeader.tsx`** — Title, theme toggle
-- **`dashboard/StatsCards.tsx`** — Total, one card per department, school vs village; footer with per-round counts and school phone coverage
+- **`dashboard/StatsCards.tsx`** — Total, inspected x/total, school vs village, one card per department; footer with per-round counts, school phone coverage, and sites missing coordinates
 - **`dashboard/DistrictBreakdown.tsx`** — Bar list by district
 - **`dashboard/ProviderChart.tsx`** — CSS donut by provider (NT ex-CAT / ex-TOT)
-- **`dashboard/PointList.tsx`** — Filterable list (cards on mobile, table on desktop), 50/page
 - **`dashboard/ServicePointMap.tsx`** — Leaflet map with clustering, department-colored pins (check mark when inspected), inspection toggle in the popup, live location, Google Maps navigation
-- **`dashboard/PointDetail.tsx`** — Slide-over with call button (plus phone source), location, and plan info
-- **`dashboard/PointFilters.tsx`** (round, department, service, district, search), **`ServiceBadge.tsx`**, **`DepartmentBadge.tsx`**, **`PhoneLink.tsx`** (`tel:` link), **`InspectButton.tsx`** — Shared by list and map
+- **`dashboard/PointDetail.tsx`** — Slide-over with inspection toggle, call button (plus phone source), location, and plan info
+- **`dashboard/PointFilters.tsx`** (desktop selects: round, department, service, inspection status, district, search), **`MobileFilterBar.tsx`** + **`FilterSheet.tsx`** (mobile search bar and bottom-sheet chips), **`ServiceBadge.tsx`**, **`DepartmentBadge.tsx`**, **`PhoneLink.tsx`** (`tel:` link), **`InspectButton.tsx`** — Used by the map, popup, and detail panel
 
 ### Lib
 - `lib/queries.ts` — Prisma query mapping DB rows (snake_case) to the camelCase `VisitSite` type, sorted with `compareSites`
-- `lib/points.ts` — Sorting, filtering, filter options, stats, formatting helpers (unit-tested)
+- `lib/points.ts` — Sorting, filtering (filter state is keyed: inspection is `'done' | 'pending'`, shown via `filterLabel`), filter options, stats, formatting helpers (unit-tested)
 - `lib/inspect.ts` — Inspect route helpers (ID/body parsing, update fields) and the ยังไม่ตรวจ/ตรวจแล้ว labels (unit-tested)
+- `hooks/useDialog.ts` — Modal behaviour (focus in/trap/restore, Escape, scroll lock) shared by `FilterSheet`, `PointDetail`, and `MobileNav`
 - `lib/services.ts` — Department list/colors (`DEPARTMENTS`, `DEPARTMENT_STYLES`), service colors (`SERVICE_STYLES`), provider short names
 
 ### Data Model (`prisma/schema.prisma`)

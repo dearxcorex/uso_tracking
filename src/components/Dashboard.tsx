@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { ActiveTab, VisitSite } from '@/types';
+import { ActiveTab, InspectionUpdate, VisitSite } from '@/types';
 import { computeStats } from '@/lib/points';
 import NavSidebar from './NavSidebar';
 import AppHeader from './client/AppHeader';
@@ -12,7 +12,6 @@ import { navItems } from './navItems';
 const StatsCards = dynamic(() => import('./dashboard/StatsCards'));
 const DistrictBreakdown = dynamic(() => import('./dashboard/DistrictBreakdown'));
 const ProviderChart = dynamic(() => import('./dashboard/ProviderChart'));
-const PointList = dynamic(() => import('./dashboard/PointList'));
 const PointDetail = dynamic(() => import('./dashboard/PointDetail'));
 const ServicePointMap = dynamic(() => import('./dashboard/ServicePointMap'), { ssr: false });
 
@@ -43,8 +42,8 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
   }, []);
 
   /** Apply a saved inspection status to the in-memory site list */
-  const handleInspected = useCallback((id: number, inspected: boolean, inspectedAt: string | null) => {
-    setPoints((prev) => prev.map((p) => (p.id === id ? { ...p, inspected, inspectedAt } : p)));
+  const handleInspected = useCallback((update: InspectionUpdate) => {
+    setPoints((prev) => prev.map((p) => (p.id === update.id ? { ...p, ...update } : p)));
   }, []);
 
   const stats = useMemo(() => computeStats(points), [points]);
@@ -84,12 +83,6 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
             </>
           )}
 
-          {activeTab === 'points' && (
-            <Suspense fallback={<Skeleton className="h-96" />}>
-              <PointList points={points} onSelect={setSelectedPointId} />
-            </Suspense>
-          )}
-
           {activeTab === 'map' && (
             <Suspense fallback={<Skeleton className="h-[500px]" />}>
               <ServicePointMap points={points} onSelect={setSelectedPointId} onInspected={handleInspected} />
@@ -106,7 +99,7 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
       />
 
       {selectedPoint && (
-        <PointDetail point={selectedPoint} onClose={closeDetail} />
+        <PointDetail point={selectedPoint} onClose={closeDetail} onInspected={handleInspected} />
       )}
     </div>
   );

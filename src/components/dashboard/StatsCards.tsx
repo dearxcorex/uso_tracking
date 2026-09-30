@@ -25,6 +25,11 @@ const ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
     </svg>
   ),
+  inspected: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
   [SCHOOL_SERVICE]: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5z" />
@@ -37,8 +42,9 @@ const SERVICES = [SCHOOL_SERVICE, VILLAGE_SERVICE];
 const SERVICE_SHORT: Record<string, string> = { [SCHOOL_SERVICE]: 'โรงเรียน', [VILLAGE_SERVICE]: 'หมู่บ้าน' };
 
 export default function StatsCards({ stats }: StatsCardsProps) {
-  const summaryItems = [
+  const summaryItems: { label: string; value: number; of?: number; bar: string; text: string; icon: React.ReactNode }[] = [
     { label: 'จุดลงพื้นที่ทั้งหมด', value: stats.total, bar: DEFAULT_STYLE.bar, text: DEFAULT_STYLE.text, icon: ICONS.point },
+    { label: 'ตรวจแล้ว', value: stats.inspected, of: stats.total, bar: 'bg-emerald-500', text: 'text-emerald-500', icon: ICONS.inspected },
     ...SERVICES.map((name) => {
       const style = getServiceStyle(name);
       return { label: name, value: stats.byServiceName[name] ?? 0, bar: style.bar, text: style.text, icon: ICONS[name] };
@@ -48,7 +54,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {summaryItems.map((item) => (
           <div key={item.label} className="clay-card p-3 card-hover relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-1 h-full ${item.bar}`} />
@@ -58,6 +64,9 @@ export default function StatsCards({ stats }: StatsCardsProps) {
               </div>
               <div className="text-xl font-semibold text-foreground tracking-tight">
                 {item.value.toLocaleString()}
+                {item.of !== undefined && (
+                  <span className="text-sm font-normal text-muted-foreground">/{item.of.toLocaleString()}</span>
+                )}
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">{item.label}</div>
             </div>
@@ -112,7 +121,6 @@ export default function StatsCards({ stats }: StatsCardsProps) {
 
       <p className="text-[11px] text-muted-foreground">
         {rounds.map(([round, count]) => `${round} ${count} จุด`).join(' · ')}
-        {` · ตรวจแล้ว ${stats.inspected}/${stats.total}`}
         {` · โรงเรียนมีเบอร์โทร ${stats.schoolsWithPhone}/${stats.schools}`}
         {stats.missingCoords > 0 && ` · ${stats.missingCoords} จุดยังไม่มีพิกัด (ไม่แสดงบนแผนที่)`}
       </p>

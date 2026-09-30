@@ -10,7 +10,7 @@ import {
   googleMapsUrl,
   hasActiveFilters,
   hasCoords,
-  siteCode,
+  filterLabel,
   siteTitle,
   telHref,
 } from './points';
@@ -81,6 +81,12 @@ describe('filterPoints', () => {
     expect(filterPoints(sites, { ...EMPTY_FILTERS, round: 'ค.9', department: 'บภ.' })).toHaveLength(0);
   });
 
+  it('filters by inspection status', () => {
+    const mixed = [makeSite({ id: 1, inspected: true }), makeSite({ id: 2 }), makeSite({ id: 3 })];
+    expect(filterPoints(mixed, { ...EMPTY_FILTERS, inspection: 'done' }).map((p) => p.id)).toEqual([1]);
+    expect(filterPoints(mixed, { ...EMPTY_FILTERS, inspection: 'pending' }).map((p) => p.id)).toEqual([2, 3]);
+  });
+
   it('searches location text, village code, and phone, ignoring surrounding spaces', () => {
     expect(filterPoints(sites, { ...EMPTY_FILTERS, search: ' กุดขมิ้น ' }).map((p) => p.id)).toEqual([2]);
     expect(filterPoints(sites, { ...EMPTY_FILTERS, search: '065-99' }).map((p) => p.id)).toEqual([2]);
@@ -147,6 +153,7 @@ describe('helpers', () => {
   it('countActiveFilters ignores search', () => {
     expect(countActiveFilters({ ...EMPTY_FILTERS, search: 'x' })).toBe(0);
     expect(countActiveFilters({ ...EMPTY_FILTERS, round: 'ค.9', district: 'จัตุรัส' })).toBe(2);
+    expect(countActiveFilters({ ...EMPTY_FILTERS, inspection: 'done' })).toBe(1);
   });
 
   it('hasActiveFilters detects any non-empty field', () => {
@@ -166,9 +173,10 @@ describe('helpers', () => {
     expect(siteTitle(makeSite({ village: null }))).toBe('—');
   });
 
-  it('siteCode joins department and visit order', () => {
-    expect(siteCode(makeSite({ department: 'บภ.', deptSeq: 7 }))).toBe('บภ.7');
-    expect(siteCode(makeSite({ deptSeq: null }))).toBe('อภ.');
+  it('filterLabel shows Thai labels for inspection values only', () => {
+    expect(filterLabel('inspection', 'done')).toBe('ตรวจแล้ว');
+    expect(filterLabel('inspection', 'pending')).toBe('ยังไม่ตรวจ');
+    expect(filterLabel('district', 'สีคิ้ว')).toBe('สีคิ้ว');
   });
 
   it('formatLocation joins non-empty parts', () => {

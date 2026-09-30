@@ -1,32 +1,38 @@
 'use client';
 
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { EMPTY_FILTERS, hasActiveFilters } from '@/lib/points';
-import type { PointFilters as Filters } from '@/lib/points';
+import { EMPTY_FILTERS, filterLabel, hasActiveFilters } from '@/lib/points';
+import type { FilterOptions, PointFilters as Filters } from '@/lib/points';
 import { getDepartmentStyle, getServiceStyle } from '@/lib/services';
+import type { ColorStyle } from '@/lib/services';
+import { useDialog } from '@/hooks/useDialog';
 
-export interface FilterOptions {
-  rounds: string[];
-  departments: string[];
-  serviceNames: string[];
-  districts: string[];
-}
+const DEFAULT_ACTIVE = 'bg-primary text-primary-foreground border-primary';
 
-function ChipGroup({
+/** Selected chip in a filter's own color (same as its badge and map pin); the ทั้งหมด chip stays primary */
+const colorActive = (style: (opt: string) => Pick<ColorStyle, 'bar'>) => (opt: string) =>
+  opt ? `${style(opt).bar} text-white border-transparent` : DEFAULT_ACTIVE;
+
+const departmentActive = colorActive(getDepartmentStyle);
+const serviceActive = colorActive(getServiceStyle);
+const inspectionActive = (opt: string) => (opt === 'done' ? 'bg-emerald-600 text-white border-transparent' : DEFAULT_ACTIVE);
+
+function ChipGroup<V extends string>({
   label,
   value,
   options,
   onChange,
-  activeClass = () => 'bg-primary text-primary-foreground border-primary',
+  format = (opt) => opt,
+  activeClass = () => DEFAULT_ACTIVE,
 }: {
   label: string;
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
+  value: V;
+  options: V[];
+  onChange: (v: V | '') => void;
+  format?: (opt: V) => string;
   activeClass?: (opt: string) => string;
 }) {
-  const chip = (opt: string, text: string) => {
+  const chip = (opt: V | '', text: string) => {
     const active = value === opt;
     return (
       <button
@@ -48,7 +54,7 @@ function ChipGroup({
       <legend className="text-xs font-medium text-muted-foreground mb-2">{label}</legend>
       <div className="flex flex-wrap gap-2">
         {chip('', 'ทั้งหมด')}
-        {options.map((opt) => chip(opt, opt))}
+        {options.map((opt) => chip(opt, format(opt)))}
       </div>
     </fieldset>
   );
@@ -66,23 +72,9 @@ interface FilterSheetProps {
 /** Mobile bottom sheet: tap-friendly chips instead of native selects */
 export default function FilterSheet({ open, onClose, filters, options, onChange, resultCount }: FilterSheetProps) {
   const update = <K extends keyof Filters>(key: K, value: Filters[K]) => onChange({ ...filters, [key]: value });
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
+  const dialogRef = useDialog<HTMLDivElement>(open, onClose);
 
   if (!open) return null;
-
-  // Selected department/service chips take the same color as their badges and map pins
-  const departmentClass = (dept: string) =>
-    dept ? `${getDepartmentStyle(dept).bar} text-white border-transparent` : 'bg-primary text-primary-foreground border-primary';
-  const serviceClass = (name: string) =>
-    name ? `${getServiceStyle(name).bar} text-white border-transparent` : 'bg-primary text-primary-foreground border-primary';
 
   // Portal to <body>: when opened from the map overlay, Leaflet's controls would otherwise stack above the sheet
   return createPortal(
@@ -90,6 +82,8 @@ export default function FilterSheet({ open, onClose, filters, options, onChange,
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="ตัวกรอง"
@@ -102,7 +96,7 @@ export default function FilterSheet({ open, onClose, filters, options, onChange,
           <h2 className="text-base font-semibold text-foreground">ตัวกรอง</h2>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="ปิด"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,9 +106,10 @@ export default function FilterSheet({ open, onClose, filters, options, onChange,
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-          <ChipGroup label="หน่วยงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} activeClass={departmentClass} />
+          <ChipGroup label="หน่วยงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} activeClass={departmentActive} />
+          <ChipGroup label="สถานะตรวจ" value={filters.inspection} options={options.inspection} onChange={(v) => update('inspection', v)} format={(v) => filterLabel('inspection', v)} activeClass={inspectionActive} />
           <ChipGroup label="ครั้ง" value={filters.round} options={options.rounds} onChange={(v) => update('round', v)} />
-          <ChipGroup label="บริการ" value={filters.serviceName} options={options.serviceNames} onChange={(v) => update('serviceName', v)} activeClass={serviceClass} />
+          <ChipGroup label="บริการ" value={filters.serviceName} options={options.serviceNames} onChange={(v) => update('serviceName', v)} activeClass={serviceActive} />
           <div className="space-y-2">
             <label htmlFor="filter-district" className="block text-xs font-medium text-muted-foreground">อำเภอ</label>
             <select

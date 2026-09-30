@@ -6,7 +6,8 @@
   --foreground: #134E4A;
   --card: #FFFFFF;
   --card-foreground: #134E4A;
-  --primary: #14B8A6;
+  /* teal-700: white text on it passes WCAG AA (teal-500 was 2.5:1) */
+  --primary: #0F766E;
   --primary-foreground: #FFFFFF;
   --secondary: #ECFDF5;
   --secondary-foreground: #134E4A;
@@ -362,14 +363,14 @@ input[type="checkbox"][role="switch"]:checked::before {
 
 .leaflet-popup-close-button {
   color: var(--muted-foreground) !important;
-  width: 36px !important;
-  height: 36px !important;
+  width: 44px !important;
+  height: 44px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   font-size: 20px !important;
-  top: 4px !important;
-  right: 4px !important;
+  top: 0 !important;
+  right: 0 !important;
   border-radius: 8px !important;
 }
 

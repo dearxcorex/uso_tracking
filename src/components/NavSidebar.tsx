@@ -55,6 +55,8 @@ export default function NavSidebar({ activeTab, onTabChange }: NavSidebarProps) 
                 }
               `}
               title={!isExpanded ? item.label : undefined}
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
             >
               <span className="flex-shrink-0">
                 {item.icon}
@@ -80,7 +82,7 @@ export default function NavSidebar({ activeTab, onTabChange }: NavSidebarProps) 
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
           </svg>
-          {isExpanded && <span className="whitespace-nowrap">Collapse</span>}
+          {isExpanded && <span className="whitespace-nowrap">ย่อเมนู</span>}
         </div>
       </div>
     </nav>

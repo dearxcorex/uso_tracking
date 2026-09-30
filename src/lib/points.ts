@@ -1,5 +1,9 @@
 import type { VisitSite, VisitStats } from '@/types';
 import { DEPARTMENTS, SCHOOL_SERVICE } from '@/lib/services';
+import { INSPECT_LABELS } from '@/lib/inspect';
+
+/** Inspection filter value; '' means all. Shown as INSPECT_LABELS via filterLabel() */
+export type InspectionFilter = '' | keyof typeof INSPECT_LABELS;
 
 export interface PointFilters {
   search: string;
@@ -7,7 +11,14 @@ export interface PointFilters {
   department: string;
   serviceName: string;
   district: string;
+  inspection: InspectionFilter;
 }
+
+/** The dropdown/chip filters (everything but search), in mobile chip order */
+export const FILTER_KEYS = ['department', 'inspection', 'round', 'serviceName', 'district'] as const;
+export type FilterKey = (typeof FILTER_KEYS)[number];
+
+export type FilterOptions = ReturnType<typeof getFilterOptions>;
 
 export const EMPTY_FILTERS: PointFilters = {
   search: '',
@@ -15,6 +26,7 @@ export const EMPTY_FILTERS: PointFilters = {
   department: '',
   serviceName: '',
   district: '',
+  inspection: '',
 };
 
 export function hasActiveFilters(filters: PointFilters): boolean {
@@ -23,7 +35,12 @@ export function hasActiveFilters(filters: PointFilters): boolean {
 
 /** Number of dropdown/chip filters set (search excluded) — for the filter button badge */
 export function countActiveFilters(filters: PointFilters): number {
-  return [filters.round, filters.department, filters.serviceName, filters.district].filter(Boolean).length;
+  return FILTER_KEYS.filter((key) => filters[key]).length;
+}
+
+/** Display text for a filter value (inspection values are keys of INSPECT_LABELS) */
+export function filterLabel(key: FilterKey, value: string): string {
+  return key === 'inspection' && value in INSPECT_LABELS ? INSPECT_LABELS[value as keyof typeof INSPECT_LABELS] : value;
 }
 
 /** Thai-aware sort that also orders embedded numbers naturally ('ค.9' before 'ค.10') */
@@ -54,6 +71,8 @@ export function filterPoints(points: VisitSite[], filters: PointFilters): VisitS
     if (filters.department && p.department !== filters.department) return false;
     if (filters.serviceName && p.serviceName !== filters.serviceName) return false;
     if (filters.district && p.district !== filters.district) return false;
+    if (filters.inspection === 'done' && !p.inspected) return false;
+    if (filters.inspection === 'pending' && p.inspected) return false;
     if (q) {
       const haystack = [p.installLocation, p.village, p.subdistrict, p.district, p.province, p.villageCode, p.phone]
         .filter(Boolean)
@@ -73,6 +92,7 @@ export function getFilterOptions(points: VisitSite[]) {
     rounds: uniq(points.map((p) => p.round)),
     departments: uniq(points.map((p) => p.department)).sort((a, b) => departmentIndex(a) - departmentIndex(b)),
     serviceNames: uniq(points.map((p) => p.serviceName)),
+    inspection: ['pending', 'done'] as InspectionFilter[],
     districts: uniq(points.map((p) => p.district)),
   };
 }
@@ -115,11 +135,6 @@ export function hasCoords(p: VisitSite): p is VisitSite & { latitude: number; lo
 /** Display name: the school for Wi-Fi โรงเรียน, the village for Wi-Fi หมู่บ้าน */
 export function siteTitle(p: Pick<VisitSite, 'installLocation' | 'village'>): string {
   return p.installLocation ?? p.village ?? '—';
-}
-
-/** 'อภ.1' — department plus its visit order */
-export function siteCode(p: Pick<VisitSite, 'department' | 'deptSeq'>): string {
-  return `${p.department}${p.deptSeq ?? ''}`;
 }
 
 /** 'village / subdistrict / district' with blanks skipped */

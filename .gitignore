@@ -46,3 +46,9 @@ __pycache__/
 
 # test coverage
 coverage/
+
+# playwright test output
+test-results/
+
+# local DB backups (asset serials, prices) — keep out of the public repo
+data/archive/

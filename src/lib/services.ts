@@ -17,22 +17,22 @@ export const DEPARTMENT_STYLES: Record<string, ColorStyle> = {
   'อภ.': {
     hex: '#10B981', hexDark: '#059669',
     bar: 'bg-emerald-500', text: 'text-emerald-500',
-    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   },
   'ตภ.': {
     hex: '#8B5CF6', hexDark: '#7C3AED',
     bar: 'bg-violet-500', text: 'text-violet-500',
-    badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    badge: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
   },
   'บภ.': {
     hex: '#F59E0B', hexDark: '#D97706',
     bar: 'bg-amber-500', text: 'text-amber-500',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
   },
   'ผภ.': {
     hex: '#F43F5E', hexDark: '#E11D48',
     bar: 'bg-rose-500', text: 'text-rose-500',
-    badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
   },
 };
 
@@ -40,19 +40,19 @@ export const SERVICE_STYLES: Record<string, ColorStyle> = {
   [VILLAGE_SERVICE]: {
     hex: '#0EA5E9', hexDark: '#0284C7',
     bar: 'bg-sky-500', text: 'text-sky-500',
-    badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+    badge: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
   },
   [SCHOOL_SERVICE]: {
     hex: '#D946EF', hexDark: '#C026D3',
     bar: 'bg-fuchsia-500', text: 'text-fuchsia-500',
-    badge: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400',
+    badge: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400',
   },
 };
 
 export const DEFAULT_STYLE: ColorStyle = {
   hex: '#14B8A6', hexDark: '#0D9488',
   bar: 'bg-teal-500', text: 'text-teal-500',
-  badge: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+  badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-400',
 };
 
 export function getServiceStyle(serviceName: string): ColorStyle {

@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="th" className="dark" suppressHydrationWarning>
       <body className={`${nunito.variable} ${fredoka.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider>
           {children}

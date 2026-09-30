@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
-import { VisitSite } from '@/types';
+import { InspectionUpdate, VisitSite } from '@/types';
+import { useDialog } from '@/hooks/useDialog';
 import { googleMapsUrl, hasCoords, siteTitle, telHref } from '@/lib/points';
 import { getProviderShort } from '@/lib/services';
 import DepartmentBadge from './DepartmentBadge';
+import InspectButton from './InspectButton';
 import ServiceBadge from './ServiceBadge';
 
 interface PointDetailProps {
   point: VisitSite;
   onClose: () => void;
+  onInspected: (update: InspectionUpdate) => void;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -21,27 +23,23 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function PointDetail({ point, onClose }: PointDetailProps) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+export default function PointDetail({ point, onClose, onInspected }: PointDetailProps) {
+  const dialogRef = useDialog<HTMLElement>(true, onClose);
 
   return (
     <div className="fixed inset-0 z-[1100] flex justify-end">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       <aside
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="รายละเอียดจุดลงพื้นที่"
         className="relative w-full sm:max-w-xl h-full bg-background border-l border-border shadow-xl flex flex-col animate-fade-in"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 p-4 border-b border-border">
+        <div className="flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))] border-b border-border">
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <DepartmentBadge department={point.department} seq={point.deptSeq} />
@@ -52,7 +50,7 @@ export default function PointDetail({ point, onClose }: PointDetailProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
             aria-label="ปิด"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +59,9 @@ export default function PointDetail({ point, onClose }: PointDetailProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4">
+          <InspectButton site={point} onChange={onInspected} />
+
           {/* Contact */}
           {point.phone && (
             <section className="clay-card p-4 space-y-2">
@@ -99,7 +99,7 @@ export default function PointDetail({ point, onClose }: PointDetailProps) {
               value={
                 hasCoords(point)
                   ? `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`
-                  : <span className="text-amber-600 dark:text-amber-400">ไม่มีพิกัด</span>
+                  : <span className="text-amber-700 dark:text-amber-400">ไม่มีพิกัด</span>
               }
             />
             {hasCoords(point) && (
@@ -107,7 +107,7 @@ export default function PointDetail({ point, onClose }: PointDetailProps) {
                 href={googleMapsUrl(point.latitude, point.longitude)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-secondary hover:bg-muted text-foreground transition-colors"
+                className="mt-2 flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold border border-primary/40 bg-primary/10 hover:bg-primary/20 text-foreground transition-colors"
                 style={{ minHeight: '44px' }}
               >
                 นำทางด้วย Google Maps

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { inspectUpdate, parseInspectBody, parseSiteId } from '@/lib/inspect';
 
@@ -18,20 +19,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Body must be { inspected: boolean }' }, { status: 400 });
     }
 
-    const updated = await prisma.visit_plan.updateMany({
+    const site = await prisma.visit_plan.update({
       where: { id: siteId },
       data: inspectUpdate(inspected),
-    });
-    if (updated.count === 0) {
-      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
-    }
-
-    const site = await prisma.visit_plan.findUniqueOrThrow({
-      where: { id: siteId },
       select: { id: true, inspected: true, inspected_at: true },
     });
     return NextResponse.json({ id: site.id, inspected: site.inspected, inspectedAt: site.inspected_at?.toISOString() ?? null });
   } catch (error) {
+    // P2025: no row with this ID
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
+    }
     console.error('PATCH /api/sites/[id]/inspect failed:', error);
     return NextResponse.json({ error: 'Failed to update inspection' }, { status: 500 });
   }
