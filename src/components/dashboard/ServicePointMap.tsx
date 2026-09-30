@@ -66,10 +66,14 @@ function getDepartmentPin(department: string, inspected: boolean): L.DivIcon {
 
 /* Location Control — auto-follow with watchPosition */
 
+/** PERMISSION_DENIED while the site itself is allowed: the OS (e.g. macOS Location Services) blocks the browser */
+const SYSTEM_DENIED = -1;
+
 // Keyed by GeolocationPositionError.code; 0 = browser has no geolocation API
 const LOCATION_ERRORS: Record<number, string> = {
+  [SYSTEM_DENIED]: 'เครื่องไม่อนุญาตให้เบราว์เซอร์ใช้ตำแหน่ง — เปิดใน System Settings › Privacy & Security › Location Services แล้วแตะปุ่มเพื่อลองใหม่',
   0: 'เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง',
-  1: 'ไม่ได้รับสิทธิ์เข้าถึงตำแหน่ง — อนุญาตในการตั้งค่าเบราว์เซอร์ แล้วแตะปุ่มเพื่อลองใหม่',
+  1: 'เบราว์เซอร์บล็อกตำแหน่งของเว็บนี้ — คลิกไอคอนหน้าช่อง URL แล้วอนุญาต "ตำแหน่ง"',
   2: 'หาตำแหน่งไม่ได้ — ตรวจว่าเปิด Location Services ของเครื่องแล้ว แล้วแตะปุ่มเพื่อลองใหม่',
   3: 'หาตำแหน่งไม่ทันเวลา — แตะปุ่มเพื่อลองใหม่',
 };
@@ -148,6 +152,13 @@ function LocationControl() {
         }
         setErrorCode(err.code);
         setStatus('error');
+        // Denied: tell a blocked site apart from the OS blocking the whole browser
+        if (err.code === err.PERMISSION_DENIED) {
+          navigator.permissions
+            ?.query({ name: 'geolocation' })
+            .then((p) => { if (p.state !== 'denied') setErrorCode(SYSTEM_DENIED); })
+            .catch(() => {});
+        }
       },
       highAccuracy ? HIGH_ACCURACY : LOW_ACCURACY
     );
@@ -157,7 +168,24 @@ function LocationControl() {
   useEffect(() => {
     startWatch(true);
 
+    // Resume as soon as the user allows location for this site, without a tap
+    let permission: PermissionStatus | null = null;
+    const onPermissionChange = () => {
+      if (permission?.state !== 'granted') return;
+      firstFixRef.current = true;
+      setStatus('loading');
+      startWatch(true);
+    };
+    navigator.permissions
+      ?.query({ name: 'geolocation' })
+      .then((p) => {
+        permission = p;
+        p.addEventListener('change', onPermissionChange);
+      })
+      .catch(() => {});
+
     return () => {
+      permission?.removeEventListener('change', onPermissionChange);
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
