@@ -108,9 +108,16 @@ export function computeStats(points: VisitSite[]): VisitStats {
   };
   const schools = points.filter((p) => p.serviceName === SCHOOL_SERVICE);
   const byDepartmentService: Record<string, Record<string, number>> = {};
+  const inspectedByDepartment: Record<string, number> = {};
+  const inspectedByDepartmentService: Record<string, Record<string, number>> = {};
   for (const p of points) {
     const byService = (byDepartmentService[p.department] ??= {});
     byService[p.serviceName] = (byService[p.serviceName] ?? 0) + 1;
+    if (p.inspected) {
+      inspectedByDepartment[p.department] = (inspectedByDepartment[p.department] ?? 0) + 1;
+      const inspectedByService = (inspectedByDepartmentService[p.department] ??= {});
+      inspectedByService[p.serviceName] = (inspectedByService[p.serviceName] ?? 0) + 1;
+    }
   }
 
   return {
@@ -122,10 +129,32 @@ export function computeStats(points: VisitSite[]): VisitStats {
     byRound: countBy((p) => p.round),
     byDepartment: countBy((p) => p.department),
     byDepartmentService,
+    inspectedByDepartment,
+    inspectedByDepartmentService,
     byServiceName: countBy((p) => p.serviceName),
     byDistrict: countBy((p) => p.district),
     byProvider: countBy((p) => p.provider),
   };
+}
+
+export interface DepartmentProgress {
+  department: string;
+  inspected: number;
+  total: number;
+}
+
+/** Inspected x/total per department present in `points`, in display order (อภ./ตภ./บภ./ผภ.) */
+export function departmentProgress(points: VisitSite[]): DepartmentProgress[] {
+  const byDepartment = new Map<string, DepartmentProgress>();
+  for (const p of points) {
+    let entry = byDepartment.get(p.department);
+    if (!entry) byDepartment.set(p.department, (entry = { department: p.department, inspected: 0, total: 0 }));
+    entry.total += 1;
+    if (p.inspected) entry.inspected += 1;
+  }
+  return [...byDepartment.values()].sort(
+    (a, b) => departmentIndex(a.department) - departmentIndex(b.department) || compareText(a.department, b.department)
+  );
 }
 
 export function hasCoords(p: VisitSite): p is VisitSite & { latitude: number; longitude: number } {

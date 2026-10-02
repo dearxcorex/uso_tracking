@@ -8,9 +8,9 @@ import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
 import { InspectionUpdate, VisitSite } from '@/types';
-import { EMPTY_FILTERS, filterPoints, formatLocation, getFilterOptions, googleMapsUrl, hasActiveFilters, hasCoords, siteTitle } from '@/lib/points';
-import type { PointFilters as Filters } from '@/lib/points';
-import { DEPARTMENT_STYLES, getDepartmentStyle, getProviderShort } from '@/lib/services';
+import { EMPTY_FILTERS, departmentProgress, filterPoints, formatLocation, getFilterOptions, googleMapsUrl, hasActiveFilters, hasCoords, siteTitle } from '@/lib/points';
+import type { DepartmentProgress, PointFilters as Filters } from '@/lib/points';
+import { DEPARTMENT_STYLES, SCHOOL_SERVICE, VILLAGE_SERVICE, getDepartmentStyle, getProviderShort } from '@/lib/services';
 import DepartmentBadge from './DepartmentBadge';
 import InspectButton from './InspectButton';
 import MobileFilterBar from './MobileFilterBar';
@@ -21,47 +21,92 @@ import ServiceBadge from './ServiceBadge';
 
 type MappedPoint = VisitSite & { latitude: number; longitude: number };
 
-/* Pin Markers — color-coded by department and marked with its first letter (so color isn't the only cue);
-   inspected sites show a check mark instead */
+/* Pin Markers — shape and symbol by service (square pin + graduation cap = Wi-Fi โรงเรียน, round pin + house =
+   Wi-Fi หมู่บ้าน), color by department; inspected sites get a green check badge on the corner */
 
-function createDepartmentPinIcon(department: string, inspected: boolean): L.DivIcon {
+const PIN_VIEWBOX = '0 0 34 44';
+// Symbols are drawn on a 24x24 grid and scaled into the pin's white center at (17, 16)
+const PIN_SYMBOL_TRANSFORM = 'translate(17 16) scale(0.58) translate(-12 -12)';
+
+interface PinShape {
+  outline: string;
+  /** White center behind the symbol: circle when true, rounded square otherwise */
+  round: boolean;
+  symbol: string;
+}
+
+const SCHOOL_PIN: PinShape = {
+  outline: 'M10 2h14a7 7 0 0 1 7 7v14a7 7 0 0 1-7 7h-2.5L17 42 12.5 30H10a7 7 0 0 1-7-7V9a7 7 0 0 1 7-7Z',
+  round: false,
+  symbol: 'M12 4 1 9.5 12 15l9-4.5V16h2V9.5ZM5 13.2V17c0 1.5 3.2 3 7 3s7-1.5 7-3v-3.8l-7 3.6Z',
+};
+
+const VILLAGE_PIN: PinShape = {
+  outline: 'M17 42C17 42 3 25 3 16A14 14 0 1 1 31 16C31 25 17 42 17 42Z',
+  round: true,
+  symbol: 'M12 3 3 11h2.5v9h5v-5h3v5h5v-9H21Z',
+};
+
+function getPinShape(serviceName: string): PinShape {
+  return serviceName === SCHOOL_SERVICE ? SCHOOL_PIN : VILLAGE_PIN;
+}
+
+function pinCenterSvg(shape: PinShape): string {
+  return shape.round
+    ? '<circle cx="17" cy="16" r="9.5" fill="#fff"/>'
+    : '<rect x="7.5" y="6.5" width="19" height="19" rx="4" fill="#fff"/>';
+}
+
+function createSitePinIcon(department: string, serviceName: string, inspected: boolean): L.DivIcon {
   const { hex: top, hexDark: bot } = getDepartmentStyle(department);
-  const center = inspected
-    ? `<circle cx="14" cy="12" r="6.5" fill="#fff"/><path d="M10.8 12.2l2.2 2.2 4.2-4.6" fill="none" stroke="${bot}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<circle cx="14" cy="12" r="6.5" fill="#fff" opacity="0.95"/><text x="14" y="15.5" text-anchor="middle" font-size="10" font-weight="700" fill="${bot}">${department.charAt(0)}</text>`;
+  const shape = getPinShape(serviceName);
+  const badge = inspected
+    ? `<circle cx="26.5" cy="7" r="6" fill="#16A34A" stroke="#fff" stroke-width="1.5"/><path d="M23.7 7.2l2 2 3.6-4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`
+    : '';
   const id = `pin-${top.slice(1)}`;
 
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="${PIN_VIEWBOX}">
       <defs>
         <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${top}"/>
           <stop offset="100%" stop-color="${bot}"/>
         </linearGradient>
       </defs>
-      <path d="M14 36 C14 36 3 20 3 12 A11 11 0 1 1 25 12 C25 20 14 36 14 36Z"
-            fill="url(#${id})" stroke="${bot}" stroke-width="0.5" opacity="0.9"/>
-      ${center}
+      <path d="${shape.outline}" fill="url(#${id})" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+      ${pinCenterSvg(shape)}
+      <path d="${shape.symbol}" fill="${bot}" transform="${PIN_SYMBOL_TRANSFORM}"/>
+      ${badge}
     </svg>`;
 
   return L.divIcon({
     className: 'map-pin-custom',
     html: svg,
-    iconSize: [28, 38],
-    iconAnchor: [14, 38],
-    popupAnchor: [0, -34],
+    iconSize: [34, 44],
+    iconAnchor: [17, 43],
+    popupAnchor: [0, -40],
   });
 }
 
-// Pre-cache one pin icon per department x inspection status
+// Pre-cache one pin icon per department x service x inspection status
 const pinIconCache: Record<string, L.DivIcon> = {};
 
-function getDepartmentPin(department: string, inspected: boolean): L.DivIcon {
-  const key = `${department}-${inspected}`;
+function getSitePin(department: string, serviceName: string, inspected: boolean): L.DivIcon {
+  const key = `${department}-${serviceName}-${inspected}`;
   if (!pinIconCache[key]) {
-    pinIconCache[key] = createDepartmentPinIcon(department, inspected);
+    pinIconCache[key] = createSitePinIcon(department, serviceName, inspected);
   }
   return pinIconCache[key];
+}
+
+/** Small neutral copy of a pin shape for the legend */
+function LegendPin({ shape }: { shape: PinShape }) {
+  return (
+    <svg className="w-4 h-5 shrink-0 text-muted-foreground" viewBox={PIN_VIEWBOX} aria-hidden="true">
+      <path d={shape.outline} fill="currentColor" />
+      <path d={shape.symbol} fill="#fff" transform={PIN_SYMBOL_TRANSFORM} />
+    </svg>
+  );
 }
 
 /* Location Control — auto-follow with watchPosition */
@@ -383,8 +428,8 @@ const ClusterLayer = React.memo(function ClusterLayer({
         <Marker
           key={point.id}
           position={[point.latitude, point.longitude]}
-          icon={getDepartmentPin(point.department, point.inspected)}
-          title={`${point.department} ${siteTitle(point)}`}
+          icon={getSitePin(point.department, point.serviceName, point.inspected)}
+          title={`${point.department} ${point.serviceName} ${siteTitle(point)}`}
         >
           <Popup maxWidth={320} minWidth={260} autoPanPaddingTopLeft={POPUP_PAD_TOP_LEFT} autoPanPaddingBottomRight={L.point(20, 20)}>
             <PopupContent point={point} onSelect={onSelect} onInspected={onInspected} />
@@ -408,13 +453,21 @@ function MapLegend() {
           aria-expanded={open}
           className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-sm text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
         >
-          หน่วยงาน
+          สัญลักษณ์
           <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
         {open && (
           <div className="mt-1 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2.5 py-2 shadow-sm space-y-1">
+            <div className="flex items-center gap-1.5">
+              <LegendPin shape={SCHOOL_PIN} />
+              <span className="text-[11px] text-foreground whitespace-nowrap">{SCHOOL_SERVICE}</span>
+            </div>
+            <div className="flex items-center gap-1.5 pb-1 mb-1 border-b border-border">
+              <LegendPin shape={VILLAGE_PIN} />
+              <span className="text-[11px] text-foreground whitespace-nowrap">{VILLAGE_SERVICE}</span>
+            </div>
             {Object.entries(DEPARTMENT_STYLES).map(([name, style]) => (
               <div key={name} className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: style.hex }} />
@@ -422,13 +475,33 @@ function MapLegend() {
               </div>
             ))}
             <div className="flex items-center gap-1.5 pt-1 mt-1 border-t border-border">
-              <span className="w-2.5 text-center text-[11px] leading-none text-emerald-500 font-bold">✓</span>
+              <span className="w-3 h-3 rounded-full shrink-0 bg-green-600 text-white text-[8px] leading-3 text-center font-bold">✓</span>
               <span className="text-[11px] text-foreground whitespace-nowrap">{INSPECT_LABELS.done}</span>
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/* Inspection progress per department (ตรวจแล้ว x/total) for the sites matching the current filters */
+
+function DepartmentProgressStrip({ progress }: { progress: DepartmentProgress[] }) {
+  return (
+    <ul className="flex items-center gap-1.5" aria-label="ตรวจแล้วแยกตามส่วนงาน">
+      {progress.map(({ department, inspected, total }) => (
+        <li
+          key={department}
+          title={`${department} ${INSPECT_LABELS.done} ${inspected}/${total}`}
+          className={`shrink-0 inline-flex items-center gap-1 h-7 px-2 rounded-full text-xs font-medium whitespace-nowrap ${getDepartmentStyle(department).badge}`}
+        >
+          {department}
+          <span className="font-mono tabular-nums">{inspected}/{total}</span>
+          {inspected === total && <span aria-label="ตรวจครบแล้ว">✓</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -448,6 +521,8 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
   const options = useMemo(() => getFilterOptions(points), [points]);
   const filteredPoints = useMemo(() => filterPoints(mappable, filters) as MappedPoint[], [mappable, filters]);
   const hiddenCount = points.length - mappable.length;
+  // Progress follows the filters except inspection status (which would pin it to 0/n or n/n), and counts sites without coordinates too
+  const progress = useMemo(() => departmentProgress(filterPoints(points, { ...filters, inspection: '' })), [points, filters]);
 
   const toggleFilters = useCallback(() => setShowFilters((v) => !v), []);
 
@@ -460,6 +535,8 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
             แสดง <span className="font-mono text-foreground">{filteredPoints.length}</span> จุดบนแผนที่
             {hiddenCount > 0 && <span className="text-amber-700 dark:text-amber-400"> · {hiddenCount} จุดไม่มีพิกัด</span>}
           </div>
+          <span className="text-xs text-muted-foreground">{INSPECT_LABELS.done}</span>
+          <DepartmentProgressStrip progress={progress} />
           <button
             onClick={toggleFilters}
             aria-label="ตัวกรอง"
@@ -498,9 +575,16 @@ export default function ServicePointMap({ points, onSelect, onInspected }: Servi
             resultCount={filteredPoints.length}
             floating
           />
-          <div className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-sm text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{filteredPoints.length}</span> จุด
-            {hiddenCount > 0 && <span className="text-amber-700 dark:text-amber-400">· {hiddenCount} ไม่มีพิกัด</span>}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-sm text-xs text-muted-foreground whitespace-nowrap">
+              <span className="font-semibold text-foreground">{filteredPoints.length}</span> จุด
+              {hiddenCount > 0 && <span className="text-amber-700 dark:text-amber-400">· {hiddenCount} ไม่มีพิกัด</span>}
+            </div>
+            {progress.length > 0 && (
+              <div className="shrink-0 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-sm">
+                <DepartmentProgressStrip progress={progress} />
+              </div>
+            )}
           </div>
         </div>
 

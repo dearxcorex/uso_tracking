@@ -75,31 +75,42 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       </div>
 
       <div>
-        <h3 className="text-xs font-medium text-muted-foreground mb-2">แยกตามหน่วยงาน</h3>
+        <h3 className="text-xs font-medium text-muted-foreground mb-2">ตรวจแล้วแยกตามส่วนงาน</h3>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           {DEPARTMENTS.map((dept) => {
             const style = getDepartmentStyle(dept);
             const total = stats.byDepartment[dept] ?? 0;
             const byService = stats.byDepartmentService[dept] ?? {};
+            const inspected = stats.inspectedByDepartment[dept] ?? 0;
+            const inspectedByService = stats.inspectedByDepartmentService[dept] ?? {};
+            const complete = total > 0 && inspected === total;
             return (
               <div key={dept} className="clay-card p-3 card-hover relative overflow-hidden">
                 <div className={`absolute top-0 left-0 w-1 h-full ${style.bar}`} />
                 <div className="pl-2">
                   <div className="flex items-center justify-between">
                     <div className={`${style.text} opacity-70`}>{ICONS.department}</div>
-                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${style.badge}`}>{dept}</span>
+                    <div className="flex items-center gap-1">
+                      {complete && (
+                        <span className="text-emerald-500" role="img" aria-label="ตรวจครบแล้ว" title="ตรวจครบแล้ว">{ICONS.inspected}</span>
+                      )}
+                      <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${style.badge}`}>{dept}</span>
+                    </div>
                   </div>
-                  <div className="mt-1.5 text-xl font-semibold text-foreground tracking-tight">
-                    {total.toLocaleString()}
-                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">จุด</span>
+                  <div className="mt-1.5 text-xl font-semibold text-foreground tracking-tight tabular-nums">
+                    {inspected.toLocaleString()}
+                    <span className="text-sm font-normal text-muted-foreground">/{total.toLocaleString()}</span>
+                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">ตรวจแล้ว</span>
                   </div>
-                  <div className="mt-2 flex h-1.5 rounded-full overflow-hidden bg-muted">
-                    {SERVICES.map((name) => {
-                      const count = byService[name] ?? 0;
-                      return count > 0 && (
-                        <div key={name} className={getServiceStyle(name).bar} style={{ width: `${(count / total) * 100}%` }} />
-                      );
-                    })}
+                  <div
+                    className="mt-2 h-1.5 rounded-full overflow-hidden bg-muted"
+                    role="progressbar"
+                    aria-label={`${dept} ตรวจแล้ว`}
+                    aria-valuemin={0}
+                    aria-valuemax={total}
+                    aria-valuenow={inspected}
+                  >
+                    <div className={`h-full rounded-full transition-all ${style.bar}`} style={{ width: total > 0 ? `${(inspected / total) * 100}%` : 0 }} />
                   </div>
                   <div className="mt-2 space-y-0.5">
                     {SERVICES.map((name) => (
@@ -108,7 +119,10 @@ export default function StatsCards({ stats }: StatsCardsProps) {
                           <span className={`w-1.5 h-1.5 rounded-full ${getServiceStyle(name).bar}`} />
                           {SERVICE_SHORT[name]}
                         </span>
-                        <span className="font-medium text-foreground tabular-nums">{byService[name] ?? 0}</span>
+                        <span className="font-medium text-foreground tabular-nums">
+                          {inspectedByService[name] ?? 0}
+                          <span className="font-normal text-muted-foreground">/{byService[name] ?? 0}</span>
+                        </span>
                       </div>
                     ))}
                   </div>

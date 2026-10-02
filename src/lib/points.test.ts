@@ -4,6 +4,7 @@ import {
   compareSites,
   computeStats,
   countActiveFilters,
+  departmentProgress,
   filterPoints,
   formatLocation,
   getFilterOptions,
@@ -146,6 +147,34 @@ describe('computeStats byDepartmentService', () => {
       'อภ.': { 'Wi-Fi หมู่บ้าน': 2, 'Wi-Fi โรงเรียน': 1 },
       'ผภ.': { 'Wi-Fi โรงเรียน': 1 },
     });
+  });
+});
+
+describe('inspection progress by department', () => {
+  const progressSites = [
+    makeSite({ id: 1, department: 'ผภ.', inspected: true }),
+    makeSite({ id: 2, inspected: true }),
+    makeSite({ id: 3, serviceName: 'Wi-Fi โรงเรียน' }),
+    makeSite({ id: 4, serviceName: 'Wi-Fi โรงเรียน', inspected: true }),
+    makeSite({ id: 5, department: 'ตภ.' }),
+  ];
+
+  it('computeStats counts inspected sites per department and service', () => {
+    const stats = computeStats(progressSites);
+    expect(stats.inspectedByDepartment).toEqual({ 'ผภ.': 1, 'อภ.': 2 });
+    expect(stats.inspectedByDepartmentService).toEqual({
+      'ผภ.': { 'Wi-Fi หมู่บ้าน': 1 },
+      'อภ.': { 'Wi-Fi หมู่บ้าน': 1, 'Wi-Fi โรงเรียน': 1 },
+    });
+  });
+
+  it('departmentProgress lists present departments in display order', () => {
+    expect(departmentProgress(progressSites)).toEqual([
+      { department: 'อภ.', inspected: 2, total: 3 },
+      { department: 'ตภ.', inspected: 0, total: 1 },
+      { department: 'ผภ.', inspected: 1, total: 1 },
+    ]);
+    expect(departmentProgress([])).toEqual([]);
   });
 });
 

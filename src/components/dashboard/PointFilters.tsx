@@ -62,7 +62,7 @@ export default function PointFilters({ filters, options, onChange }: PointFilter
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
         <FilterSelect label="ครั้ง" value={filters.round} options={options.rounds} onChange={(v) => update('round', v)} />
-        <FilterSelect label="หน่วยงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} />
+        <FilterSelect label="ส่วนงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} />
         <FilterSelect label="บริการ" value={filters.serviceName} options={options.serviceNames} onChange={(v) => update('serviceName', v)} />
         <FilterSelect label="สถานะตรวจ" value={filters.inspection} options={options.inspection} onChange={(v) => update('inspection', v)} format={(v) => filterLabel('inspection', v)} />
         <FilterSelect label="อำเภอ" value={filters.district} options={options.districts} onChange={(v) => update('district', v)} />

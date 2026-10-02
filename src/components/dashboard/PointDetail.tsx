@@ -118,7 +118,7 @@ export default function PointDetail({ point, onClose, onInspected }: PointDetail
           {/* Plan */}
           <section className="clay-card p-4 space-y-2">
             <InfoRow label="ครั้งที่" value={point.round} />
-            <InfoRow label="หน่วยงาน" value={point.department} />
+            <InfoRow label="ส่วนงาน" value={point.department} />
             <InfoRow label="บริการ" value={`${point.serviceName}${point.serviceType ? ` (ประเภท ${point.serviceType})` : ''}`} />
             <InfoRow label="ผู้ให้บริการ" value={point.provider && <span title={point.provider}>{getProviderShort(point.provider)}</span>} />
             <InfoRow label="โครงการ" value={point.project} />

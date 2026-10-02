@@ -72,14 +72,19 @@ export default function Dashboard({ points: initialPoints }: DashboardProps) {
           {activeTab === 'dashboard' && (
             <>
               <StatsCards stats={stats} />
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
-                <div className="xl:col-span-2">
-                  <DistrictBreakdown byDistrict={stats.byDistrict} />
+              {/* A provider chart with a single provider says nothing, so the districts take the full width */}
+              {Object.keys(stats.byProvider).length > 1 ? (
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+                  <div className="xl:col-span-2">
+                    <DistrictBreakdown byDistrict={stats.byDistrict} />
+                  </div>
+                  <div>
+                    <ProviderChart byProvider={stats.byProvider} total={stats.total} />
+                  </div>
                 </div>
-                <div>
-                  <ProviderChart byProvider={stats.byProvider} total={stats.total} />
-                </div>
-              </div>
+              ) : (
+                <DistrictBreakdown byDistrict={stats.byDistrict} />
+              )}
             </>
           )}
 

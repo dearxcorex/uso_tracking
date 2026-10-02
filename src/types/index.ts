@@ -37,6 +37,10 @@ export interface VisitStats {
   byDepartment: Record<string, number>;
   /** department -> service name -> count */
   byDepartmentService: Record<string, Record<string, number>>;
+  /** department -> inspected count (departments with none are absent) */
+  inspectedByDepartment: Record<string, number>;
+  /** department -> service name -> inspected count */
+  inspectedByDepartmentService: Record<string, Record<string, number>>;
   byServiceName: Record<string, number>;
   byDistrict: Record<string, number>;
   byProvider: Record<string, number>;

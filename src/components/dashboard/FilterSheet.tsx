@@ -106,7 +106,7 @@ export default function FilterSheet({ open, onClose, filters, options, onChange,
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-          <ChipGroup label="หน่วยงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} activeClass={departmentActive} />
+          <ChipGroup label="ส่วนงาน" value={filters.department} options={options.departments} onChange={(v) => update('department', v)} activeClass={departmentActive} />
           <ChipGroup label="สถานะตรวจ" value={filters.inspection} options={options.inspection} onChange={(v) => update('inspection', v)} format={(v) => filterLabel('inspection', v)} activeClass={inspectionActive} />
           <ChipGroup label="ครั้ง" value={filters.round} options={options.rounds} onChange={(v) => update('round', v)} />
           <ChipGroup label="บริการ" value={filters.serviceName} options={options.serviceNames} onChange={(v) => update('serviceName', v)} activeClass={serviceActive} />
