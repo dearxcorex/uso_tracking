@@ -42,7 +42,7 @@ export default function PointDetail({ point, onClose, onInspected }: PointDetail
         <div className="flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))] border-b border-border">
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              <DepartmentBadge department={point.department} seq={point.deptSeq} />
+              <DepartmentBadge department={point.department} />
               <ServiceBadge name={point.serviceName} />
               <span className="text-xs text-muted-foreground">{point.round}</span>
             </div>
@@ -93,7 +93,7 @@ export default function PointDetail({ point, onClose, onInspected }: PointDetail
             <InfoRow label="ตำบล" value={point.subdistrict} />
             <InfoRow label="อำเภอ" value={point.district} />
             <InfoRow label="จังหวัด" value={point.province} />
-            <InfoRow label="รหัสหมู่บ้าน" value={point.villageCode && <span className="font-mono">{point.villageCode}</span>} />
+            <InfoRow label="ลำดับ" value={point.villageCode && <span className="font-mono">{point.villageCode}</span>} />
             <InfoRow
               label="พิกัด"
               value={
@@ -118,7 +118,7 @@ export default function PointDetail({ point, onClose, onInspected }: PointDetail
           {/* Plan */}
           <section className="clay-card p-4 space-y-2">
             <InfoRow label="ครั้งที่" value={point.round} />
-            <InfoRow label="หน่วยงาน" value={`${point.department} ลำดับ ${point.deptSeq ?? '—'}`} />
+            <InfoRow label="หน่วยงาน" value={point.department} />
             <InfoRow label="บริการ" value={`${point.serviceName}${point.serviceType ? ` (ประเภท ${point.serviceType})` : ''}`} />
             <InfoRow label="ผู้ให้บริการ" value={point.provider && <span title={point.provider}>{getProviderShort(point.provider)}</span>} />
             <InfoRow label="โครงการ" value={point.project} />

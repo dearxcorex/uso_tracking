@@ -303,9 +303,12 @@ function PopupContent({ point, onSelect, onInspected }: { point: MappedPoint; on
   return (
     <div className="min-w-[250px] max-w-[320px] max-h-[65vh] overflow-y-auto space-y-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <DepartmentBadge department={point.department} seq={point.deptSeq} />
+        <DepartmentBadge department={point.department} />
         <ServiceBadge name={point.serviceName} />
         <span className="text-[11px] text-[var(--muted-foreground)]">{point.round}</span>
+        {point.villageCode && (
+          <span className="text-[11px] text-[var(--muted-foreground)]">ลำดับ <span className="font-mono">{point.villageCode}</span></span>
+        )}
       </div>
 
       <div className="text-[13px] space-y-1.5 text-[var(--card-foreground)]">
