@@ -41,19 +41,19 @@ Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan`
 `@/*` maps to `./src/*`.
 
 ### Components
-- **`Dashboard.tsx`** — Tab orchestrator; owns `activeTab` and `selectedPointId` (opens `PointDetail`)
+- **`Dashboard.tsx`** — Tab orchestrator; owns `activeTab` and `selectedPointId` (opens `PointDetail`); hides `ProviderChart` when the plan has only one provider (districts then take the full width)
 - **`navItems.tsx`** — Tab labels/subtitles/icons shared by `NavSidebar.tsx` (desktop, expand-on-hover) and `client/MobileNav.tsx` (slide-in drawer)
 - **`client/AppHeader.tsx`** — Title, theme toggle
-- **`dashboard/StatsCards.tsx`** — Total, inspected x/total, school vs village, one card per department; footer with per-round counts, school phone coverage, and sites missing coordinates
+- **`dashboard/StatsCards.tsx`** — Total, inspected x/total, school vs village, one card per department (inspected x/total with a progress bar, plus x/total per service, and a check when complete); footer with per-round counts, school phone coverage, and sites missing coordinates
 - **`dashboard/DistrictBreakdown.tsx`** — Bar list by district
 - **`dashboard/ProviderChart.tsx`** — CSS donut by provider (NT ex-CAT / ex-TOT)
-- **`dashboard/ServicePointMap.tsx`** — Leaflet map with clustering, department-colored pins (check mark when inspected), inspection toggle in the popup, live location, Google Maps navigation
+- **`dashboard/ServicePointMap.tsx`** — Leaflet map with clustering; pins are shaped by service (square + graduation cap = Wi-Fi โรงเรียน, round + house = Wi-Fi หมู่บ้าน), colored by department, with a green check badge when inspected; collapsible สัญลักษณ์ legend; per-department inspected x/total chips (follow the filters except inspection status, and include sites without coordinates); inspection toggle in the popup, live location, Google Maps navigation
 - **`dashboard/PointDetail.tsx`** — Slide-over with inspection toggle, call button (plus phone source), location, and plan info
 - **`dashboard/PointFilters.tsx`** (desktop selects: round, department, service, inspection status, district, search), **`MobileFilterBar.tsx`** + **`FilterSheet.tsx`** (mobile search bar and bottom-sheet chips), **`ServiceBadge.tsx`**, **`DepartmentBadge.tsx`**, **`PhoneLink.tsx`** (`tel:` link), **`InspectButton.tsx`** — Used by the map, popup, and detail panel
 
 ### Lib
 - `lib/queries.ts` — Prisma query mapping DB rows (snake_case) to the camelCase `VisitSite` type, sorted with `compareSites`
-- `lib/points.ts` — Sorting, filtering (filter state is keyed: inspection is `'done' | 'pending'`, shown via `filterLabel`), filter options, stats, formatting helpers (unit-tested)
+- `lib/points.ts` — Sorting, filtering (filter state is keyed: inspection is `'done' | 'pending'`, shown via `filterLabel`), filter options, stats (`computeStats`, `departmentProgress`), formatting helpers (unit-tested)
 - `lib/inspect.ts` — Inspect route helpers (ID/body parsing, update fields) and the ยังไม่ตรวจ/ตรวจแล้ว labels (unit-tested)
 - `hooks/useDialog.ts` — Modal behaviour (focus in/trap/restore, Escape, scroll lock) shared by `FilterSheet`, `PointDetail`, and `MobileNav`
 - `lib/services.ts` — Department list/colors (`DEPARTMENTS`, `DEPARTMENT_STYLES`), service colors (`SERVICE_STYLES`), provider short names
@@ -68,6 +68,7 @@ Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan`
 - Claymorphism: `.clay-card`, `.clay-shadow`, `.card-hover`; teal primary via CSS variables in `globals.css`
 - Fonts: Nunito (body), Fredoka (headings) via `next/font/google`
 - Responsive: desktop sidebar + mobile drawer, breakpoint `lg`
+- UI wording: departments are labelled ส่วนงาน (not หน่วยงาน)
 
 ## Rules
 - Do not commit and push to GitHub — wait for explicit command
