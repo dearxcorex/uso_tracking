@@ -52,3 +52,6 @@ test-results/
 
 # local DB backups (asset serials, prices) — keep out of the public repo
 data/archive/
+
+# Word lock files
+~$*

@@ -18,14 +18,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx prisma studio` - Open Prisma Studio GUI
 
 ### Data Import
-Two steps, review in between:
-1. `.venv/bin/python scripts/merge_departments.py` - Merge the department sheets (อภ./ตภ./บภ./ผภ.) of `data/USO net ระยะ 2 ใช้ ค.9.xlsx` and `ค.10.xlsx` into `data/merged_departments.xlsx` for review
-   - `round` = workbook (ค.9/ค.10), `department` = sheet-name prefix, `dept_seq` = number in the "ครั้งที่" tag column
-   - School phones come from `data/school_phones.csv` (keyed by `village_code`, with source URL and review note); Wi-Fi หมู่บ้าน rows have no phone
-2. `.venv/bin/python scripts/import_visit_plan.py` - Load `data/merged_departments.xlsx` into `visit_plan`
-   - Truncates `visit_plan`, then re-inserts (safe to re-run); `phone_note` is review-only and not loaded
-   - Inspection status is carried over across re-imports, matched on (round, department, service_name, village_code)
-   - Reads `DATABASE_URL` from `.env`; needs pandas, openpyxl, psycopg2 in `.venv`
+`.venv/bin/python scripts/import_visit_plan.py` - Load the department Word files `data/อภ.docx`, `ตภ.docx`, `บภ.docx`, `ผภ..docx` into `visit_plan` (add `--dry-run` to print the rows without writing)
+- `department` = file name, `round`/`project` = heading above each table ("ครั้งที่ 9 (Zone C+)" → ค.9, USO Zone C+), `dept_seq` = row position in its table, `village_code` = the "ลำดับ" column; `service_type` is not in the Word files and stays null
+- Whitespace is normalized and known typos are fixed via `CORRECTIONS` in the script
+- School phones come from `data/school_phones.csv` (keyed by `village_code`, with source URL and review note); Wi-Fi หมู่บ้าน rows have no phone; `phone_note` is review-only and not loaded
+- Truncates `visit_plan`, then re-inserts (safe to re-run)
+- Inspection status is carried over across re-imports, matched on (round, department, service_name, village_code)
+- Reads `DATABASE_URL` from `.env`; needs psycopg2 in `.venv`
 
 ## Environment Variables
 
@@ -62,6 +61,7 @@ Single page on `/`. `src/app/page.tsx` (server component) loads all `visit_plan`
 ### Data Model (`prisma/schema.prisma`)
 - `visit_plan` — round, department, dept_seq, service_type, service_name, village_code, village, subdistrict, district, province, install_location, provider, latitude, longitude, project, phone, phone_source, inspected, inspected_at (set from the app); unique on (round, department, service_name, village_code)
 - The old `service_point`/`asset` tables were dropped on 2026-09-30; CSV backups are in `data/archive/backup_{service_point,asset}_2026-09-30.csv`
+- The plan was replaced from the Word files on 2026-10-02 (the earlier xlsx-based plan is backed up in `data/archive/backup_visit_plan_2026-10-02.csv`)
 
 ### Design System
 - Dark mode default, light toggle (`ThemeContext`, persisted in `localStorage` key `usonet-theme`, `.dark` class on `<html>`)

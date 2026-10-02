@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// One planned site visit from the USO Net phase 2 department sheets (data/merged_departments.xlsx)
+/// One planned site visit from the USO Net phase 2 department Word files (data/*.docx)
 model visit_plan {
   id               Int       @id @default(autoincrement())
   round            String
